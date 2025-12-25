@@ -213,12 +213,23 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
     lrs_config = load_lrs_config(model_type, is_style)
     
     if lrs_config:
-        # Use expected_repo_name (Hash ID) as the primary key if available
-        lookup_key = expected_repo_name if expected_repo_name else hash_model(model_name)
-        print(f"🔍 LRS Lookup Key: {lookup_key}")
+        # 1. Try Lookup by Expected Repo Name (Task ID / Repo ID)
+        lookup_key = expected_repo_name
+        lrs_settings = None
+        
+        if lookup_key:
+             print(f"🔍 Checking LRS for Key (Repo Name): {lookup_key}")
+             lrs_settings = get_config_for_model(lrs_config, lookup_key)
 
-        # get_config_for_model returns: Default LRS + Specific LRS (Merged)
-        lrs_settings = get_config_for_model(lrs_config, lookup_key)
+        # 2. Fallback: Try Lookup by Model Hash (Content Hash)
+        if not lrs_settings:
+            model_hash = hash_model(model_name)
+            print(f"🔍 Checking LRS for Key (Model Hash): {model_hash}")
+            lrs_settings = get_config_for_model(lrs_config, model_hash)
+            if lrs_settings:
+                lookup_key = model_hash
+
+        # Final Check
 
         if lrs_settings:
             print(f"🚀 APPLYING LRS OVERRIDES for {lookup_key}...")
