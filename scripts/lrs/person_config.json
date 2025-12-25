@@ -37,14 +37,9 @@
         "84b1be29d81de0bf88d6c4033943d2bc4b543d9ebba9e1c9678296237f147466": {
             "network_dim": 128,
             "network_alpha": 128,
-            "network_args": [
-                "conv_dim=32",
-                "conv_alpha=32",
-                "dropout=null"
-            ],
-            "max_train_epochs": 32,
+            "max_train_epochs": 45,
             "min_snr_gamma": 5,
-            "caption_dropout_rate": 0.15
+            "caption_dropout_rate": 0.1
         },
         "a51427f9147c3c672edacd0c1070443e50d28df4c6f7d04cd7038fb68f1e8952": {
             "network_dim": 64,
