@@ -35,7 +35,12 @@
             "network_alpha": 128,
             "max_train_epochs": 32,
             "min_snr_gamma": 5,
-            "caption_dropout_rate": 0.15
+            "caption_dropout_rate": 0.15,
+            "network_args": [
+                "conv_dim=32",
+                "conv_alpha=32",
+                "dropout=null"
+            ]
         },
         "a51427f9147c3c672edacd0c1070443e50d28df4c6f7d04cd7038fb68f1e8952": {
             "network_dim": 64,

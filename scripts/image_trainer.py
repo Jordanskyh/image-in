@@ -46,7 +46,7 @@ def merge_model_config(default_config: dict, model_config: dict) -> dict:
         merged.update(model_config)
 
     return merged if merged else None
-def get_config_for_model(lrs_config: dict, model_name: str) -> dict:
+def get_config_for_model(lrs_config: dict, model_name: str, specific_only: bool = False) -> dict:
     """Get configuration overrides based on model name."""
     if not isinstance(lrs_config, dict):
         return None
@@ -56,6 +56,9 @@ def get_config_for_model(lrs_config: dict, model_name: str) -> dict:
 
     if isinstance(data, dict) and model_name in data:
         return merge_model_config(default_config, data.get(model_name))
+
+    if specific_only:
+        return None
 
     if default_config:
         return default_config
@@ -211,30 +214,75 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     config["network_args"] = network_config["network_args"]
 
     # 2. Apply LRS Overrides (Top Layer) - The "Universal Patcher"
-    lrs_config = load_lrs_config(model_type, is_style)
+    lrs_settings = None
+    source_file = None
+    model_hash = hash_model(model_name)
+    print(f"🔍 Calculated Model Hash: {model_hash}")
     
-    if lrs_config:
-        # STRATEGY: Aggressive Hash Lookup (Like your Colleague)
-        # We try explicit Hash first because Task ID is often unreliable for config lookup
-        model_hash = hash_model(model_name)
-        print(f"🔍 Calculated Model Hash: {model_hash}")
-        
-        lrs_settings = get_config_for_model(lrs_config, model_hash)
-        
-        # Fallback: If hash not found, try Repo Name (Task ID)
-        if not lrs_settings and expected_repo_name:
-             print(f"🔍 Hash lookup failed. Trying Repo Name: {expected_repo_name}")
-             lrs_settings = get_config_for_model(lrs_config, expected_repo_name)
-
-        if lrs_settings:
-            print(f"🚀 APPLYING LRS OVERRIDES for Target...")
-            for key, value in lrs_settings.items():
-                config[key] = value
-                print(f"   -> [OVERRIDE] {key}: {value}")
-        else:
-            print(f"ℹ️ No specific LRS settings found. Using Defaults.")
+    # Determine config library path
+    config_dir = os.path.join(script_dir, "lrs")
+    
+    # Priority List for Cross-Lookup
+    files_to_check = []
+    if model_type == "flux":
+        files_to_check = ["flux.json"]
     else:
-        print("⚠️ Warning: Could not load LRS file.")
+        primary = "style_config.json" if is_style else "person_config.json"
+        secondary = "person_config.json" if is_style else "style_config.json"
+        files_to_check = [primary, secondary]
+
+    # --- PHASE 1: SEARCH SPECIFIC MATCH ---
+    for filename in files_to_check:
+        config_path = os.path.join(config_dir, filename)
+        if not os.path.exists(config_path):
+            continue
+            
+        try:
+            with open(config_path, 'r') as f:
+                current_lrs = json.load(f)
+            
+            # Try specific Hash match first (Specific Only = No Default fallback yet)
+            match = get_config_for_model(current_lrs, model_hash, specific_only=True)
+            if match:
+                lrs_settings = match
+                source_file = filename
+                print(f"✅ Found Specific Hash match in {filename}!")
+                break
+                
+            # Try specific Repo Name match second
+            if expected_repo_name:
+                match = get_config_for_model(current_lrs, expected_repo_name, specific_only=True)
+                if match:
+                    lrs_settings = match
+                    source_file = filename
+                    print(f"✅ Found Specific Repo Name match in {filename}!")
+                    break
+        except Exception as e:
+            print(f"⚠️ Error reading {filename}: {e}")
+            continue
+
+    # --- PHASE 2: FALLBACK TO PRIMARY DEFAULT ---
+    if not lrs_settings:
+        primary_filename = files_to_check[0]
+        config_path = os.path.join(config_dir, primary_filename)
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    primary_lrs = json.load(f)
+                lrs_settings = primary_lrs.get("default", {})
+                source_file = primary_filename
+                if lrs_settings:
+                    print(f"ℹ️ No specific hash found. Using Defaults from {primary_filename}.")
+            except: pass
+
+    # --- PHASE 3: APPLY OVERRIDES ---
+    if lrs_settings:
+        print(f"🚀 APPLYING LRS OVERRIDES from {source_file}...")
+        for key, value in lrs_settings.items():
+            config[key] = value
+            print(f"   -> [OVERRIDE] {key}: {value}")
+    else:
+        print("⚠️ Warning: No LRS configuration (Specific or Default) could be applied.")
 
     # Update config
     config["pretrained_model_name_or_path"] = model_path
