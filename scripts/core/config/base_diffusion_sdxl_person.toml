@@ -1,3 +1,4 @@
+
 no_metadata = true
 async_upload = true
 bucket_no_upscale = true
@@ -39,8 +40,8 @@ training_comment = ""
 xformers = true
 
 ###### steps and epochs ######
-max_train_epochs = 55
-save_every_n_epochs = 20
+max_train_epochs = 30
+save_every_n_epochs = 5
 
 ###### loss function ######
 loss_type = "l2"
@@ -52,14 +53,12 @@ gradient_accumulation_steps = 1
 ###### optimizer ######
 optimizer_type = "prodigy"
 optimizer_args = ["decouple=True", "d_coef=1", "weight_decay=0.01", "use_bias_correction=True", "safeguard_warmup=True"]
-unet_lr = 1.0
-text_encoder_lr = 1.0
+unet_lr = 1
+text_encoder_lr = 1
 
 ###### lr scheduler ######
 lr_scheduler = "constant"
-lr_warmup_steps = 0
 
-###### noise offset ######
 ###### noise offset ######
 # noise_offset_type = "Original"
 # noise_offset = 0.0357
@@ -72,7 +71,7 @@ network_alpha = -1
 network_dim = -1
 network_module = "networks.lora"
 network_args = []
-network_dropout = 0 # Full Power
+network_dropout = 0
 caption_dropout_rate = 0
 clip_skip = 1
 max_timestep = 1000
