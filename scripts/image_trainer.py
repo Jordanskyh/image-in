@@ -92,36 +92,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
     with open(config_template_path, "r") as file:
         config = toml.load(file)
 
-    lrs_config = load_lrs_config(model_type, is_style)
-    if lrs_config:
-        model_hash = hash_model(model_name)
-        lrs_settings = get_config_for_model(lrs_config, model_hash)
-
-        if lrs_settings:
-            for optional_key in [
-                "max_grad_norm",
-                "prior_loss_weight",
-                "max_train_epochs",
-                "train_batch_size",
-                "optimizer_args",
-                "unet_lr",
-                "text_encoder_lr",
-                "noise_offset",
-                "min_snr_gamma",
-                "seed",
-                "lr_warmup_steps",
-                "loss_type",
-                "huber_c",
-                "huber_schedule",
-            ]:
-                if optional_key in lrs_settings:
-                    config[optional_key] = lrs_settings[optional_key]
-        else:
-            print(f"Warning: No LRS configuration found for model '{model_name}'", flush=True)
-    else:
-        print("Warning: Could not load LRS configuration, using default values", flush=True)
-
-    # Update config
+    # Define network configurations
     network_config_person = {
         "stabilityai/stable-diffusion-xl-base-1.0": 235,
         "Lykon/dreamshaper-xl-1-0": 235,
@@ -217,24 +188,56 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]
         },
     }
+    
+    # Apply baseline network settings FIRST
+    if model_type == "sdxl":
+        if is_style:
+            # Check if model exists in the map
+            if model_name in network_config_style:
+                 network_id = network_config_style[model_name]
+                 if network_id in config_mapping:
+                    network_config = config_mapping[network_id]
+                    config["network_dim"] = network_config["network_dim"]
+                    config["network_alpha"] = network_config["network_alpha"]
+                    config["network_args"] = network_config["network_args"]
+        else:
+            if model_name in network_config_person:
+                 network_id = network_config_person[model_name]
+                 if network_id in config_mapping:
+                    network_config = config_mapping[network_id]
+                    config["network_dim"] = network_config["network_dim"]
+                    config["network_alpha"] = network_config["network_alpha"]
+                    config["network_args"] = network_config["network_args"]
 
+    # --- LAYER 3: LRS INJECTION (Universal Patcher) ---
+    lrs_config = load_lrs_config(model_type, is_style)
+    
+    if lrs_config:
+        # Use expected_repo_name (Hash ID) as the primary key if available
+        lookup_key = expected_repo_name if expected_repo_name else hash_model(model_name)
+        print(f"🔍 LRS Lookup Key: {lookup_key}")
+
+        # get_config_for_model returns: Default LRS + Specific LRS (Merged)
+        lrs_settings = get_config_for_model(lrs_config, lookup_key)
+
+        if lrs_settings:
+            print(f"🚀 APPLYING LRS OVERRIDES for {lookup_key}...")
+            for key, value in lrs_settings.items():
+                # Universal Override: Apply ANY key found in LRS to the main config
+                config[key] = value
+                print(f"   -> [OVERRIDE] {key}: {value}")
+        else:
+            print(f"ℹ️ No specific LRS settings found for {lookup_key}. Using LRS Defaults if available.")
+    else:
+        print("⚠️ Warning: Could not load LRS file. Using Base TOML only.")
+
+    # Update config
     config["pretrained_model_name_or_path"] = model_path
     config["train_data_dir"] = train_data_dir
     output_dir = train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
     config["output_dir"] = output_dir
-
-    if model_type == "sdxl":
-        if is_style:
-            network_config = config_mapping[network_config_style[model_name]]
-        else:
-            network_config = config_mapping[network_config_person[model_name]]
-
-        config["network_dim"] = network_config["network_dim"]
-        config["network_alpha"] = network_config["network_alpha"]
-        config["network_args"] = network_config["network_args"]
-
 
     # Save config to file
     config_path = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.toml")
