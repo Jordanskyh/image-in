@@ -189,10 +189,11 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         },
     }
     
-    # Apply baseline network settings FIRST
+    # --- CONFIGURATION PIPELINE ---
+    
+    # 1. Apply Hardcoded Network Defaults FIRST (Base Layer)
     if model_type == "sdxl":
         if is_style:
-            # Check if model exists in the map
             if model_name in network_config_style:
                  network_id = network_config_style[model_name]
                  if network_id in config_mapping:
@@ -209,38 +210,31 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     config["network_alpha"] = network_config["network_alpha"]
                     config["network_args"] = network_config["network_args"]
 
-    # --- LAYER 3: LRS INJECTION (Universal Patcher) ---
+    # 2. Apply LRS Overrides (Top Layer) - The "Universal Patcher"
     lrs_config = load_lrs_config(model_type, is_style)
     
     if lrs_config:
-        # 1. Try Lookup by Expected Repo Name (Task ID / Repo ID)
-        lookup_key = expected_repo_name
-        lrs_settings = None
+        # STRATEGY: Aggressive Hash Lookup (Like your Colleague)
+        # We try explicit Hash first because Task ID is often unreliable for config lookup
+        model_hash = hash_model(model_name)
+        print(f"🔍 Calculated Model Hash: {model_hash}")
         
-        if lookup_key:
-             print(f"🔍 Checking LRS for Key (Repo Name): {lookup_key}")
-             lrs_settings = get_config_for_model(lrs_config, lookup_key)
-
-        # 2. Fallback: Try Lookup by Model Hash (Content Hash)
-        if not lrs_settings:
-            model_hash = hash_model(model_name)
-            print(f"🔍 Checking LRS for Key (Model Hash): {model_hash}")
-            lrs_settings = get_config_for_model(lrs_config, model_hash)
-            if lrs_settings:
-                lookup_key = model_hash
-
-        # Final Check
+        lrs_settings = get_config_for_model(lrs_config, model_hash)
+        
+        # Fallback: If hash not found, try Repo Name (Task ID)
+        if not lrs_settings and expected_repo_name:
+             print(f"🔍 Hash lookup failed. Trying Repo Name: {expected_repo_name}")
+             lrs_settings = get_config_for_model(lrs_config, expected_repo_name)
 
         if lrs_settings:
-            print(f"🚀 APPLYING LRS OVERRIDES for {lookup_key}...")
+            print(f"🚀 APPLYING LRS OVERRIDES for Target...")
             for key, value in lrs_settings.items():
-                # Universal Override: Apply ANY key found in LRS to the main config
                 config[key] = value
                 print(f"   -> [OVERRIDE] {key}: {value}")
         else:
-            print(f"ℹ️ No specific LRS settings found for {lookup_key}. Using LRS Defaults if available.")
+            print(f"ℹ️ No specific LRS settings found. Using Defaults.")
     else:
-        print("⚠️ Warning: Could not load LRS file. Using Base TOML only.")
+        print("⚠️ Warning: Could not load LRS file.")
 
     # Update config
     config["pretrained_model_name_or_path"] = model_path
