@@ -412,7 +412,7 @@ def run_training(model_type, config_path):
     elif model_type in ["z-image", "qwen-image"]:
         training_command = [
             "python3",
-            "/app/run.py",
+            "run.py",
             config_path
         ]
 
