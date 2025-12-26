@@ -153,7 +153,16 @@ async def main():
 
     if args.task_type == TaskType.IMAGETASK.value:
         dataset_zip_path = await download_image_dataset(args.dataset, args.task_id, dataset_dir)
-        model_path = await download_base_model(args.model, model_dir)
+        if args.model_type in [ImageModelType.Z_IMAGE.value, ImageModelType.QWEN_IMAGE.value]:
+            print(f"🚀 [DOWNLOADER] Performing full snapshot download for {args.model_type}...", flush=True)
+            model_path = snapshot_download(
+                repo_id=args.model,
+                local_dir=model_dir,
+                local_dir_use_symlinks=False,
+                ignore_patterns=["*.msgpack", "*.h5", "*.ot"]
+            )
+        else:
+            model_path = await download_base_model(args.model, model_dir)
         
         # Qwen Quantization File Fetcher (Colleague's Strategy)
         if args.model_type and "qwen" in args.model_type.lower():
