@@ -107,8 +107,11 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         if 'config' in config and 'process' in config['config']:
             for process in config['config']['process']:
                 if 'model' in process:
-                    # USE THE FILE PATH, NOT DIRECTORY
-                    process['model']['name_or_path'] = get_model_path(model_path)
+                    # Qwen needs the directory to find config.json, Z-image needs the file
+                    if model_type == "qwen-image":
+                        process['model']['name_or_path'] = model_path
+                    else:
+                        process['model']['name_or_path'] = get_model_path(model_path)
                     
                     if 'training_folder' in process:
                         output_dir = train_paths.get_checkpoints_output_path(task_id, expected_repo_name or "output")
