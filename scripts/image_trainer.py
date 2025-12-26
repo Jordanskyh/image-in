@@ -123,19 +123,14 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 if trigger_word:
                     process['trigger_word'] = trigger_word
                 
-                # FIX: Redirect Assistant LoRA if not found in cache
-                if 'model' in process and process['model'].get('assistant_lora_path', '').startswith('/cache/hf_cache'):
-                    cache_path = process['model']['assistant_lora_path']
-                    if not os.path.exists(cache_path):
-                        # Try finding it in the model folder
-                        alt_path = os.path.join(model_path, os.path.basename(cache_path))
                 # FINAL PROTECTOR: Fix Assistant LoRA Path (Inside Loop)
                 if 'model' in process and process['model'].get('assistant_lora_path'):
                     lora_path = process['model']['assistant_lora_path']
                     if not os.path.exists(lora_path):
                         print(f"🔍 [AI-Toolkit] Assistant LoRA not found at {lora_path}. Searching alternatives...")
                         # Search in the same directory as the model
-                        model_dir = os.path.dirname(get_model_path(model_path))
+                        full_model_path = get_model_path(model_path)
+                        model_dir = full_model_path if os.path.isdir(full_model_path) else os.path.dirname(full_model_path)
                         alt_path = os.path.join(model_dir, os.path.basename(lora_path))
                         
                         if os.path.exists(alt_path):
