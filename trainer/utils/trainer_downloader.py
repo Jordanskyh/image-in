@@ -154,9 +154,10 @@ async def main():
         dataset_zip_path = await download_image_dataset(args.dataset, args.task_id, dataset_dir)
         if args.model_type in [ImageModelType.Z_IMAGE.value, ImageModelType.QWEN_IMAGE.value]:
             print(f"🚀 [DOWNLOADER] Performing full snapshot download for {args.model_type}...", flush=True)
+            target_model_dir = os.path.join(model_dir, args.model.replace("/", "--"))
             model_path = snapshot_download(
                 repo_id=args.model,
-                local_dir=model_dir,
+                local_dir=target_model_dir,
                 local_dir_use_symlinks=False,
                 ignore_patterns=["*.msgpack", "*.h5", "*.ot"]
             )
@@ -168,15 +169,26 @@ async def main():
             print("🚀 [DOWNLOADER] Fetching Qwen quantization file...", flush=True)
             os.makedirs("/cache/hf_cache", exist_ok=True)
             try:
+                # First try the model's own repo for the quantization file
                 hf_hub_download(
-                    repo_id="gradients-io-tournaments/Qwen-Image-Adapter", # Asumsi repo asalnya
+                    repo_id=args.model,
                     filename="qwen_image_torchao_uint3.safetensors",
                     local_dir="/cache/hf_cache",
                     local_dir_use_symlinks=False
                 )
-                print("✅ [DOWNLOADER] Qwen quantization file ready.", flush=True)
-            except Exception as e:
-                print(f"⚠️ [DOWNLOADER] Could not fetch uint3 file (optional): {e}")
+                print("✅ [DOWNLOADER] Qwen quantization file ready (from main repo).", flush=True)
+            except Exception:
+                try:
+                    # Fallback to the Adapter repo if main repo fails
+                    hf_hub_download(
+                        repo_id="gradients-io-tournaments/Qwen-Image-Adapter",
+                        filename="qwen_image_torchao_uint3.safetensors",
+                        local_dir="/cache/hf_cache",
+                        local_dir_use_symlinks=False
+                    )
+                    print("✅ [DOWNLOADER] Qwen quantization file ready (from adapter repo).", flush=True)
+                except Exception as e:
+                    print(f"⚠️ [DOWNLOADER] Could not fetch uint3 file (optional): {e}")
              
         print("Downloading clip models", flush=True)
         CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14", cache_dir=cst.HUGGINGFACE_CACHE_PATH)
