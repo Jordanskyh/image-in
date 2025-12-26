@@ -463,7 +463,7 @@ async def main():
     os.makedirs(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, exist_ok=True)
     os.makedirs(train_cst.IMAGE_CONTAINER_IMAGES_PATH, exist_ok=True)
 
-    model_path = train_paths.get_image_base_model_path(args.model)
+    model_path = train_paths.get_image_base_model_path(args.model, args.model_type)
 
     # Prepare dataset
     print("Preparing dataset...", flush=True)

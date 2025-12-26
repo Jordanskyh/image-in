@@ -11,9 +11,14 @@ from core.models.utility_models import ImageModelType
 def get_checkpoints_output_path(task_id: str, repo_name: str) -> str:
     return str(Path(train_cst.OUTPUT_CHECKPOINTS_PATH) / task_id / repo_name)
 
-def get_image_base_model_path(model_id: str) -> str:
+def get_image_base_model_path(model_id: str, model_type: str = None) -> str:
     model_folder = model_id.replace("/", "--")
     base_path = str(Path(train_cst.CACHE_MODELS_DIR) / model_folder)
+    
+    # AI-Toolkit models (Z-Image, Qwen) MUST be directories
+    if model_type in [ImageModelType.Z_IMAGE.value, ImageModelType.QWEN_IMAGE.value]:
+        return base_path
+
     if os.path.isdir(base_path):
         files = [f for f in os.listdir(base_path) if os.path.isfile(os.path.join(base_path, f))]
         if len(files) == 1 and files[0].endswith(".safetensors"):
