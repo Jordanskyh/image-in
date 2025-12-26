@@ -153,23 +153,7 @@ async def main():
 
     if args.task_type == TaskType.IMAGETASK.value:
         dataset_zip_path = await download_image_dataset(args.dataset, args.task_id, dataset_dir)
-        
-        if args.model_type and any(t in args.model_type.lower() for t in ["z-image", "qwen"]):
-             model_path = await download_axolotl_base_model(args.model, model_dir)
-             
-             # Specifically download the Z-Image assistant adapter if it's z-image
-             if "z-image" in args.model_type.lower():
-                 print("🚀 [DOWNLOADER] Ensuring Z-Image assistant adapter exists...", flush=True)
-                 os.makedirs("/cache/hf_cache", exist_ok=True)
-                 adapter_path = hf_hub_download(
-                     repo_id="gradients-io-tournaments/Z-Image-Turbo",
-                     filename="zimage_turbo_training_adapter_v2.safetensors",
-                     local_dir="/cache/hf_cache",
-                     local_dir_use_symlinks=False
-                 )
-                 print(f"✅ [DOWNLOADER] Adapter downloaded to: {adapter_path}", flush=True)
-        else:
-             model_path = await download_base_model(args.model, model_dir)
+        model_path = await download_base_model(args.model, model_dir)
              
         print("Downloading clip models", flush=True)
         CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14", cache_dir=cst.HUGGINGFACE_CACHE_PATH)

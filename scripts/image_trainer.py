@@ -85,7 +85,14 @@ def load_lrs_config(model_type: str, is_style: bool) -> dict:
         return None
 
 
-def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word=None):
+def get_model_path(path: str) -> str:
+    if os.path.isdir(path):
+        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        if len(files) == 1 and files[0].endswith(".safetensors"):
+            return os.path.join(path, files[0])
+    return path
+
+def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word: str | None = None):
     """Get the training data directory"""
     train_data_dir = train_paths.get_image_training_images_dir(task_id)
 
@@ -100,7 +107,9 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         if 'config' in config and 'process' in config['config']:
             for process in config['config']['process']:
                 if 'model' in process:
-                    process['model']['name_or_path'] = model_path
+                    # USE THE FILE PATH, NOT DIRECTORY
+                    process['model']['name_or_path'] = get_model_path(model_path)
+                    
                     if 'training_folder' in process:
                         output_dir = train_paths.get_checkpoints_output_path(task_id, expected_repo_name or "output")
                         if not os.path.exists(output_dir):
@@ -113,16 +122,22 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
                 if trigger_word:
                     process['trigger_word'] = trigger_word
-                
-                # Fix for Z-Image Assistant LoRA path
-                if 'model' in process and process['model'].get('arch') == 'zimage:turbo':
-                    low_path = "/cache/hf_cache/zimage_turbo_training_adapter_v2.safetensors"
-                    # If not in cache, check inside the model folder
-                    if not os.path.exists(low_path):
-                        alt_path = os.path.join(model_path, "zimage_turbo_training_adapter_v2.safetensors")
-                        if os.path.exists(alt_path):
-                            process['model']['assistant_lora_path'] = alt_path
-                            print(f"🎯 [AI-Toolkit] Redirected Assistant LoRA to: {alt_path}")
+                        else:
+                            # 2. Dynamic Search: Find any safetensors with 'adapter' in the name
+                            print(f"🔍 [AI-Toolkit] Adapter not found at default paths. Searching in {model_path}...")
+                            found_adapter = None
+                            for root_dir, dirs, files in os.walk(model_path):
+                                for file in files:
+                                    if file.endswith(".safetensors") and "adapter" in file.lower():
+                                        found_adapter = os.path.join(root_dir, file)
+                                        break
+                                if found_adapter: break
+                            
+                            if found_adapter:
+                                process['model']['assistant_lora_path'] = found_adapter
+                                print(f"✨ [AI-Toolkit] Found and Using Dynamic Adapter: {found_adapter}")
+                            else:
+                                print(f"⚠️ [AI-Toolkit] WARNING: No adapter found in {model_path}. Training might fail.")
 
         # 2. LRS Override System (The "Universal Patcher" for Toolkit)
         model_hash = hash_model(model_name)
