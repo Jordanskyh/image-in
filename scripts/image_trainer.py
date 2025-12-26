@@ -356,8 +356,8 @@ def run_training(model_type, config_path):
         ]
     elif model_type in ["z-image", "qwen-image"]:
         training_command = [
-            "python3", "run.py",
-            "/app/ai-toolkit/run.py"
+            "python3",
+            "/app/ai-toolkit/run.py",
             config_path
         ]
 
