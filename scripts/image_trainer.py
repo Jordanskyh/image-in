@@ -412,7 +412,7 @@ def run_training(model_type, config_path):
     elif model_type in ["z-image", "qwen-image"]:
         training_command = [
             "python3",
-            "run.py",
+            "/app/ai-toolkit/run.py",
             config_path
         ]
 
@@ -423,7 +423,8 @@ def run_training(model_type, config_path):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            cwd="/app/ai-toolkit" if model_type in ["z-image", "qwen-image"] else None
         )
 
         for line in process.stdout:
