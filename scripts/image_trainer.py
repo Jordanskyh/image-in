@@ -153,6 +153,17 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                                 print(f"⚠️ [AI-Toolkit] NO ADAPTER FOUND. Removing key to prevent crash.")
                                 process['model'].pop('assistant_lora_path', None)
         
+                # Qwen Quantization Fail-safe
+                if model_type == "qwen-image" and 'model' in process:
+                    qtype = process['model'].get('qtype', '')
+                    if '|' in qtype:
+                        quant_file = qtype.split('|')[1]
+                        if not os.path.exists(quant_file):
+                            print(f"⚠️ [AI-Toolkit] Quantization file {quant_file} not found. FALLING BACK to standard FB16 mode.")
+                            process['model']['quantize'] = False
+                            process['model']['quantize_te'] = False
+                            process['model'].pop('qtype', None)
+        
         # 2. LRS Override System (The "Universal Patcher" for Toolkit)
         model_hash = hash_model(model_name)
         print(f"🔍 [AI-Toolkit] Calculated Model Hash: {model_hash}")
