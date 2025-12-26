@@ -1,10 +1,11 @@
 #!/bin/bash
 
-TASK_ID="qwen-test-$(date +%s)"
-MODEL="gradients-io-tournaments/Qwen2-VL-7B-Instruct" # Ganti dengan repo Qwen yang mas tuju
+# TASK_ID harus unik, saya ikuti Task ID rekan anda
+TASK_ID="1c93dd95-2e89-48d9-813d-e0f521599cfd"
+MODEL="gradients-io-tournaments/Qwen-Image" # DIPERBAIKI: Mengikuti repo rekan anda
 DATASET_ZIP="https://gradients.s3.eu-north-1.amazonaws.com/dc9853fb35c40bd4_train_data.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVVZOOA7SA4UOFLPI%2F20251221%2Feu-north-1%2Fs3%2Faws4_request&X-Amz-Date=20251221T212609Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=865abddfccce78e1964b0abb468c3fc7a591019820d3a3024f7d4220757da588"
 MODEL_TYPE="qwen-image"
-EXPECTED_REPO_NAME="test_qwen_image_1"
+EXPECTED_REPO_NAME="test_qwenimage-1"
 
 HUGGINGFACE_USERNAME=""
 HUGGINGFACE_TOKEN=""
@@ -13,7 +14,9 @@ LOCAL_FOLDER="/app/checkpoints/$TASK_ID/$EXPECTED_REPO_NAME"
 CHECKPOINTS_DIR="$(pwd)/secure_checkpoints"
 OUTPUTS_DIR="$(pwd)/outputs"
 mkdir -p "$CHECKPOINTS_DIR"
+chmod 700 "$CHECKPOINTS_DIR"
 mkdir -p "$OUTPUTS_DIR"
+chmod 700 "$OUTPUTS_DIR"
 
 echo "🚀 Downloading model Qwen and dataset..."
 docker run --rm \

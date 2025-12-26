@@ -154,6 +154,21 @@ async def main():
     if args.task_type == TaskType.IMAGETASK.value:
         dataset_zip_path = await download_image_dataset(args.dataset, args.task_id, dataset_dir)
         model_path = await download_base_model(args.model, model_dir)
+        
+        # Qwen Quantization File Fetcher (Colleague's Strategy)
+        if args.model_type and "qwen" in args.model_type.lower():
+            print("🚀 [DOWNLOADER] Fetching Qwen quantization file...", flush=True)
+            os.makedirs("/cache/hf_cache", exist_ok=True)
+            try:
+                hf_hub_download(
+                    repo_id="gradients-io-tournaments/Qwen-Image-Adapter", # Asumsi repo asalnya
+                    filename="qwen_image_torchao_uint3.safetensors",
+                    local_dir="/cache/hf_cache",
+                    local_dir_use_symlinks=False
+                )
+                print("✅ [DOWNLOADER] Qwen quantization file ready.", flush=True)
+            except Exception as e:
+                print(f"⚠️ [DOWNLOADER] Could not fetch uint3 file (optional): {e}")
              
         print("Downloading clip models", flush=True)
         CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14", cache_dir=cst.HUGGINGFACE_CACHE_PATH)
