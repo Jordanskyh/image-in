@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Standalone script for image model training (SDXL or Flux)
+Image-in of the people
 """
 
 import argparse
 import asyncio
 import hashlib
 import json
+import yaml
 import os
 import subprocess
 import sys
 import re
 import time
-
 import toml
 
 
@@ -24,7 +24,7 @@ sys.path.append(project_root)
 import core.constants as cst
 import trainer.constants as train_cst
 import trainer.utils.training_paths as train_paths
-from core.config.config_handler import save_config_toml
+from core.config.config_handler import save_config, save_config_toml
 from core.dataset.prepare_diffusion_dataset import prepare_dataset
 from core.models.utility_models import ImageModelType
 
@@ -85,18 +85,45 @@ def load_lrs_config(model_type: str, is_style: bool) -> dict:
         return None
 
 
-def create_config(task_id, model_path, model_name, model_type, expected_repo_name):
+def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word=None):
     """Get the training data directory"""
     train_data_dir = train_paths.get_image_training_images_dir(task_id)
 
     """Create the diffusion config file"""
     config_template_path, is_style = train_paths.get_image_training_config_template_path(model_type, train_data_dir)
 
-    with open(config_template_path, "r") as file:
-        config = toml.load(file)
+    is_ai_toolkit = model_type in [ImageModelType.Z_IMAGE.value, ImageModelType.QWEN_IMAGE.value]
+    
+    if is_ai_toolkit:
+        with open(config_template_path, "r") as file:
+            config = yaml.safe_load(file)
+        if 'config' in config and 'process' in config['config']:
+            for process in config['config']['process']:
+                if 'model' in process:
+                    process['model']['name_or_path'] = model_path
+                    if 'training_folder' in process:
+                        output_dir = train_paths.get_checkpoints_output_path(task_id, expected_repo_name or "output")
+                        if not os.path.exists(output_dir):
+                            os.makedirs(output_dir, exist_ok=True)
+                        process['training_folder'] = output_dir
+                
+                if 'datasets' in process:
+                    for dataset in process['datasets']:
+                        dataset['folder_path'] = train_data_dir
 
-    # Define network configurations
-    network_config_person = {
+                if trigger_word:
+                    process['trigger_word'] = trigger_word
+        
+        config_path = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.yaml")
+        save_config(config, config_path)
+        print(f"Created ai-toolkit config at {config_path}", flush=True)
+        return config_path
+    else:
+        with open(config_template_path, "r") as file:
+            config = toml.load(file)
+
+        # Define network configurations
+        network_config_person = {
         "stabilityai/stable-diffusion-xl-base-1.0": 235,
         "Lykon/dreamshaper-xl-1-0": 235,
         "Lykon/art-diffusion-xl-0.9": 235,
@@ -327,6 +354,12 @@ def run_training(model_type, config_path):
             f"/app/sd-scripts/{model_type}_train_network.py",
             "--config_file", config_path
         ]
+    elif model_type in ["z-image", "qwen-image"]:
+        training_command = [
+            "python3", "run.py",
+            "/app/ai-toolkit/run.py"
+            config_path
+        ]
 
     try:
         print("Starting training subprocess...\n", flush=True)
@@ -365,9 +398,10 @@ async def main():
     parser.add_argument("--task-id", required=True, help="Task ID")
     parser.add_argument("--model", required=True, help="Model name or path")
     parser.add_argument("--dataset-zip", required=True, help="Link to dataset zip file")
-    parser.add_argument("--model-type", required=True, choices=["sdxl", "flux"], help="Model type")
+    parser.add_argument("--model-type", required=True, choices=["sdxl", "flux", "z-image", "qwen-image"], help="Model type")
     parser.add_argument("--expected-repo-name", help="Expected repository name")
     parser.add_argument("--hours-to-complete", type=float, required=True, help="Number of hours to complete the task")
+    parser.add_argument("--trigger-word", help="Trigger word for training")
     args = parser.parse_args()
 
     os.makedirs(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, exist_ok=True)
@@ -381,7 +415,7 @@ async def main():
     prepare_dataset(
         training_images_zip_path=train_paths.get_image_training_zip_save_path(args.task_id),
         training_images_repeat=cst.DIFFUSION_SDXL_REPEATS if args.model_type == ImageModelType.SDXL.value else cst.DIFFUSION_FLUX_REPEATS,
-        instance_prompt=cst.DIFFUSION_DEFAULT_INSTANCE_PROMPT,
+        instance_prompt=args.trigger_word if args.trigger_word else cst.DIFFUSION_DEFAULT_INSTANCE_PROMPT,
         class_prompt=cst.DIFFUSION_DEFAULT_CLASS_PROMPT,
         job_id=args.task_id,
         output_dir=train_cst.IMAGE_CONTAINER_IMAGES_PATH
@@ -394,6 +428,7 @@ async def main():
         args.model,
         args.model_type,
         args.expected_repo_name,
+        trigger_word=args.trigger_word
     )
 
     # Run training

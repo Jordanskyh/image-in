@@ -45,6 +45,12 @@ def get_image_training_config_template_path(model_type: str, train_data_dir: str
     elif model_type == ImageModelType.FLUX.value:
         return str(Path(train_cst.IMAGE_CONTAINER_CONFIG_TEMPLATE_PATH) / "base_diffusion_flux.toml"), False
 
+    elif model_type == ImageModelType.Z_IMAGE.value:
+         return str(Path(train_cst.IMAGE_CONTAINER_CONFIG_TEMPLATE_PATH) / "base_diffusion_zimage.yaml"), False
+
+    elif model_type == ImageModelType.QWEN_IMAGE.value:
+         return str(Path(train_cst.IMAGE_CONTAINER_CONFIG_TEMPLATE_PATH) / "base_diffusion_qwen_image.yaml"), False
+
 def get_image_training_zip_save_path(task_id: str) -> str:
     return str(Path(train_cst.CACHE_DATASETS_DIR) / f"{task_id}_tourn.zip")
 
