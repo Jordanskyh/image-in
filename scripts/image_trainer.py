@@ -129,13 +129,32 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     if not os.path.exists(cache_path):
                         # Try finding it in the model folder
                         alt_path = os.path.join(model_path, os.path.basename(cache_path))
+                # FINAL PROTECTOR: Fix Assistant LoRA Path (Inside Loop)
+                if 'model' in process and process['model'].get('assistant_lora_path'):
+                    lora_path = process['model']['assistant_lora_path']
+                    if not os.path.exists(lora_path):
+                        print(f"🔍 [AI-Toolkit] Assistant LoRA not found at {lora_path}. Searching alternatives...")
+                        # Search in the same directory as the model
+                        model_dir = os.path.dirname(get_model_path(model_path))
+                        alt_path = os.path.join(model_dir, os.path.basename(lora_path))
+                        
                         if os.path.exists(alt_path):
                             process['model']['assistant_lora_path'] = alt_path
                             print(f"🎯 [AI-Toolkit] Redirected Assistant LoRA to: {alt_path}")
                         else:
-                            # Fallback: if not found anywhere, let it try to use the filename only
-                            # as AI-toolkit might find it relative to scripts
-                            print(f"⚠️ [AI-Toolkit] Assistant LoRA not found. Toolkit will try its own discovery.")
+                            # If still not found, search any .safetensors in that folder
+                            found = False
+                            for f in os.listdir(model_dir):
+                                if f.endswith(".safetensors") and ("adapter" in f.lower() or "lora" in f.lower()):
+                                    process['model']['assistant_lora_path'] = os.path.join(model_dir, f)
+                                    print(f"✨ [AI-Toolkit] Found alternative adapter: {process['model']['assistant_lora_path']}")
+                                    found = True
+                                    break
+                            
+                            if not found:
+                                print(f"⚠️ [AI-Toolkit] NO ADAPTER FOUND. Removing key to prevent crash.")
+                                process['model'].pop('assistant_lora_path', None)
+        
         # 2. LRS Override System (The "Universal Patcher" for Toolkit)
         model_hash = hash_model(model_name)
         print(f"🔍 [AI-Toolkit] Calculated Model Hash: {model_hash}")
