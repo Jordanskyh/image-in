@@ -122,23 +122,20 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
                 if trigger_word:
                     process['trigger_word'] = trigger_word
+                
+                # FIX: Redirect Assistant LoRA if not found in cache
+                if 'model' in process and process['model'].get('assistant_lora_path', '').startswith('/cache/hf_cache'):
+                    cache_path = process['model']['assistant_lora_path']
+                    if not os.path.exists(cache_path):
+                        # Try finding it in the model folder
+                        alt_path = os.path.join(model_path, os.path.basename(cache_path))
+                        if os.path.exists(alt_path):
+                            process['model']['assistant_lora_path'] = alt_path
+                            print(f"🎯 [AI-Toolkit] Redirected Assistant LoRA to: {alt_path}")
                         else:
-                            # 2. Dynamic Search: Find any safetensors with 'adapter' in the name
-                            print(f"🔍 [AI-Toolkit] Adapter not found at default paths. Searching in {model_path}...")
-                            found_adapter = None
-                            for root_dir, dirs, files in os.walk(model_path):
-                                for file in files:
-                                    if file.endswith(".safetensors") and "adapter" in file.lower():
-                                        found_adapter = os.path.join(root_dir, file)
-                                        break
-                                if found_adapter: break
-                            
-                            if found_adapter:
-                                process['model']['assistant_lora_path'] = found_adapter
-                                print(f"✨ [AI-Toolkit] Found and Using Dynamic Adapter: {found_adapter}")
-                            else:
-                                print(f"⚠️ [AI-Toolkit] WARNING: No adapter found in {model_path}. Training might fail.")
-
+                            # Fallback: if not found anywhere, let it try to use the filename only
+                            # as AI-toolkit might find it relative to scripts
+                            print(f"⚠️ [AI-Toolkit] Assistant LoRA not found. Toolkit will try its own discovery.")
         # 2. LRS Override System (The "Universal Patcher" for Toolkit)
         model_hash = hash_model(model_name)
         print(f"🔍 [AI-Toolkit] Calculated Model Hash: {model_hash}")
@@ -196,7 +193,6 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         
         config_path = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.yaml")
         save_config(config, config_path)
-        print(f"Created ai-toolkit config at {config_path}", flush=True)
         
         # DEBUG: Show final yaml content
         print("\n--- FINAL YAML CONFIG PREVIEW ---")
@@ -204,6 +200,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         print("---------------------------------\n")
         
         return config_path
+
     else:
         with open(config_template_path, "r") as file:
             config = toml.load(file)
