@@ -16,7 +16,7 @@ def get_image_base_model_path(model_id: str, model_type: str = None) -> str:
     base_path = str(Path(train_cst.CACHE_MODELS_DIR) / model_folder)
     
     # AI-Toolkit models (Z-Image, Qwen) MUST be directories
-    if model_type in [ImageModelType.Z_IMAGE.value, ImageModelType.QWEN_IMAGE.value]:
+    if model_type and any(t in model_type.lower() for t in ["z-image", "qwen"]):
         return base_path
 
     if os.path.isdir(base_path):
