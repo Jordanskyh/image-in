@@ -132,6 +132,7 @@ async def main():
     )
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--file-format")
+    parser.add_argument("--model-type")
     args = parser.parse_args()
 
     dataset_dir = cst.CACHE_DATASETS_DIR

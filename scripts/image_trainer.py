@@ -113,6 +113,61 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
                 if trigger_word:
                     process['trigger_word'] = trigger_word
+
+        # 2. LRS Override System (The "Universal Patcher" for Toolkit)
+        model_hash = hash_model(model_name)
+        print(f"🔍 [AI-Toolkit] Calculated Model Hash: {model_hash}")
+        
+        config_dir = os.path.join(script_dir, "lrs")
+        files_to_check = ["flux.json", "person_config.json", "style_config.json"] # Broad look for toolkit
+        lrs_settings = None
+
+        for filename in files_to_check:
+            lrs_path = os.path.join(config_dir, filename)
+            if os.path.exists(lrs_path):
+                try:
+                    with open(lrs_path, 'r') as f:
+                        current_lrs = json.load(f)
+                    match = get_config_for_model(current_lrs, model_hash, specific_only=True)
+                    if not match and expected_repo_name:
+                        match = get_config_for_model(current_lrs, expected_repo_name, specific_only=True)
+                    
+                    if match:
+                        lrs_settings = match
+                        print(f"✅ [AI-Toolkit] Found Specific Overrides in {filename}!")
+                        break
+                except: continue
+
+        # Apply Overrides to YAML structure
+        if lrs_settings:
+            print(f"🚀 [AI-Toolkit] APPLYING OVERRIDES...")
+            
+            # Map common LRS keys to Toolkit keys
+            key_map = {
+                "unet_lr": "lr",
+                "max_train_steps": "steps",
+                "train_batch_size": "batch_size",
+                "max_train_epochs": "epochs"
+            }
+            
+            final_overrides = lrs_settings.copy()
+            for old_key, new_key in key_map.items():
+                if old_key in lrs_settings:
+                    final_overrides[new_key] = lrs_settings[old_key]
+
+            # Patcher: Search and replace common keys in YAML
+            def patch_toolkit_config(obj, overrides):
+                if isinstance(obj, dict):
+                    for k, v in obj.items():
+                        if k in overrides:
+                            obj[k] = overrides[k]
+                            print(f"   -> [PATCHED] {k}: {overrides[k]}")
+                        patch_toolkit_config(v, overrides)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        patch_toolkit_config(item, overrides)
+
+            patch_toolkit_config(config, final_overrides)
         
         config_path = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.yaml")
         save_config(config, config_path)
@@ -357,7 +412,7 @@ def run_training(model_type, config_path):
     elif model_type in ["z-image", "qwen-image"]:
         training_command = [
             "python3",
-            "/app/ai-toolkit/run.py",
+            "/app/run.py",
             config_path
         ]
 
