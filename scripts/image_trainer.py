@@ -113,6 +113,16 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
                 if trigger_word:
                     process['trigger_word'] = trigger_word
+                
+                # Fix for Z-Image Assistant LoRA path
+                if 'model' in process and process['model'].get('arch') == 'zimage:turbo':
+                    low_path = "/cache/hf_cache/zimage_turbo_training_adapter_v2.safetensors"
+                    # If not in cache, check inside the model folder
+                    if not os.path.exists(low_path):
+                        alt_path = os.path.join(model_path, "zimage_turbo_training_adapter_v2.safetensors")
+                        if os.path.exists(alt_path):
+                            process['model']['assistant_lora_path'] = alt_path
+                            print(f"🎯 [AI-Toolkit] Redirected Assistant LoRA to: {alt_path}")
 
         # 2. LRS Override System (The "Universal Patcher" for Toolkit)
         model_hash = hash_model(model_name)

@@ -159,13 +159,15 @@ async def main():
              
              # Specifically download the Z-Image assistant adapter if it's z-image
              if "z-image" in args.model_type.lower():
-                 print("Downloading Z-Image assistant adapter...", flush=True)
-                 hf_hub_download(
+                 print("🚀 [DOWNLOADER] Ensuring Z-Image assistant adapter exists...", flush=True)
+                 os.makedirs("/cache/hf_cache", exist_ok=True)
+                 adapter_path = hf_hub_download(
                      repo_id="gradients-io-tournaments/Z-Image-Turbo",
                      filename="zimage_turbo_training_adapter_v2.safetensors",
-                     local_dir="/cache/hf_cache/",
+                     local_dir="/cache/hf_cache",
                      local_dir_use_symlinks=False
                  )
+                 print(f"✅ [DOWNLOADER] Adapter downloaded to: {adapter_path}", flush=True)
         else:
              model_path = await download_base_model(args.model, model_dir)
              
