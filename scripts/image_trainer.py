@@ -172,6 +172,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         config_path = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.yaml")
         save_config(config, config_path)
         print(f"Created ai-toolkit config at {config_path}", flush=True)
+        
+        # DEBUG: Show final yaml content
+        print("\n--- FINAL YAML CONFIG PREVIEW ---")
+        print(yaml.dump(config, default_flow_style=False))
+        print("---------------------------------\n")
+        
         return config_path
     else:
         with open(config_template_path, "r") as file:

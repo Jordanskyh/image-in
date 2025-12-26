@@ -112,11 +112,19 @@ async def download_base_model(repo_id: str, save_root: str) -> str:
             return save_path
 
 
-async def download_axolotl_base_model(repo_id: str, save_dir: str) -> str:
+async def download_axolotl_base_model(repo_id: str, save_dir: str, force: bool = False) -> str:
     model_dir = os.path.join(save_dir, repo_id.replace("/", "--"))
-    if os.path.exists(model_dir):
-        print(f"Model {repo_id} already exists at {model_dir}. Skipping download.")
-        return model_dir
+    
+    # Force re-download if the folder looks like an old-style or incomplete download
+    if not force and os.path.exists(model_dir):
+        # If it's for a toolkit model, it must have a transformer or unet folder
+        if os.path.isdir(os.path.join(model_dir, "transformer")) or os.path.isdir(os.path.join(model_dir, "unet")):
+            print(f"Model {repo_id} already exists with correct structure. Skipping download.")
+            return model_dir
+        else:
+            print(f"Model {repo_id} found but structure is incomplete. Forcing re-download...")
+            shutil.rmtree(model_dir)
+
     snapshot_download(repo_id=repo_id, repo_type="model", local_dir=model_dir, local_dir_use_symlinks=False)
     return model_dir
 
@@ -146,8 +154,18 @@ async def main():
     if args.task_type == TaskType.IMAGETASK.value:
         dataset_zip_path = await download_image_dataset(args.dataset, args.task_id, dataset_dir)
         
-        if args.model_type in ["z-image", "qwen-image"]:
+        if args.model_type and any(t in args.model_type.lower() for t in ["z-image", "qwen"]):
              model_path = await download_axolotl_base_model(args.model, model_dir)
+             
+             # Specifically download the Z-Image assistant adapter if it's z-image
+             if "z-image" in args.model_type.lower():
+                 print("Downloading Z-Image assistant adapter...", flush=True)
+                 hf_hub_download(
+                     repo_id="gradients-io-tournaments/Z-Image-Turbo",
+                     filename="zimage_turbo_training_adapter_v2.safetensors",
+                     local_dir="/cache/hf_cache/",
+                     local_dir_use_symlinks=False
+                 )
         else:
              model_path = await download_base_model(args.model, model_dir)
              
