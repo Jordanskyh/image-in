@@ -537,8 +537,7 @@ def calculate_adaptive_epochs(train_data_dir, is_style):
          config["network_args"] = [ "conv_dim=16", "conv_alpha=8", "dropout=null" ]
          
     print(f"✅ Final Configuration Applied. Epochs: {config['max_train_epochs']}, BS: {config['train_batch_size']}")
-    else:
-        print("⚠️ Warning: No LRS configuration (Specific or Default) could be applied.")
+
 
     # Update config
     config["pretrained_model_name_or_path"] = model_path
