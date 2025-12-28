@@ -441,6 +441,65 @@
             "min_snr_gamma": 7,
             "caption_dropout_rate": 0.1,
             "prior_loss_weight": 0.8
+        },
+        "8cb556cc-71a6-4d40-9807-c6f9255b70ab": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 80,
+            "min_snr_gamma": 8,
+            "noise_offset": 0.0411,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0.05
+        },
+        "5567ea0c-4e75-4b06-a9d9-5d14db4fab71": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 90,
+            "train_batch_size": 1,
+            "min_snr_gamma": 8,
+            "noise_offset": 0.0411,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0.05
+        },
+        "d69a29d9-8bd5-4c89-bedc-a5d43839229e": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 160,
+            "train_batch_size": 1,
+            "min_snr_gamma": 5,
+            "noise_offset": 0.02,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0.05
+        },
+        "d3d663f6-4331-4b3f-ba16-0c54e0f1dde8": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 160,
+            "train_batch_size": 1,
+            "min_snr_gamma": 5,
+            "noise_offset": 0.02,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0.05
         }
     }
 }

@@ -229,9 +229,89 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         
         return config_path
 
+def calculate_adaptive_epochs(train_data_dir, is_style):
+    """
+    Autopilot Logic: Calculate optimal epochs based on dataset size to achieve target steps.
+    Target Steps: 1500 for Person (more verification), 1000 for Style (pattern recognition).
+    """
+    try:
+        # 1. Count images
+        image_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+        num_images = sum(1 for f in os.listdir(train_data_dir) if os.path.splitext(f)[1].lower() in image_extensions)
+        
+        if num_images == 0:
+            return 20 # Fallback safe default
+            
+        # 2. Set Target Steps (The "Gold Standard" - Aggressive V2)
+        # We aim for ~1600 steps regardless of task type to beat the lazy champions.
+        target_steps = 1600
+        
+        # 3. Calculate Raw Epochs needed
+        # Formula: Epochs = Target Steps / Num Images
+        # Note: This assumes Batch Size=1. If BS higher, epochs need to scale, 
+        # but for now we calculate baseline epochs for single image focus.
+        raw_epochs = int(target_steps / num_images)
+        
+        # 4. Apply Safety Brackets
+        min_epochs = 30  # Never do less than 30 (prev: 10 was too low)
+        max_epochs = 200 # Cap at 200 to stay well within time limits (prev: 300)
+        
+        adaptive_epochs = max(min_epochs, min(raw_epochs, max_epochs))
+        
+        # 5. Batch Size Recommendations
+        # Small dataset (<15) => Force BS 1 for detail
+        # Medium dataset (15-50) => BS 2 is efficient
+        # Large dataset (>50) => BS 4 to save time
+        if num_images < 15:
+            rec_batch_size = 1
+        elif num_images < 50:
+            rec_batch_size = 2
+        else:
+            rec_batch_size = 4
+        
+        print(f"[Autopilot V2] Dataset: {num_images} images | Target: {target_steps} steps")
+        print(f"[Autopilot V2] Proposed: {adaptive_epochs} Epochs, BS {rec_batch_size}")
+        
+        return adaptive_epochs, rec_batch_size
+        
+    except Exception as e:
+        print(f"[Autopilot] Error calculating epochs: {e}. Using safe default.")
+        return 30, 1
+
     else:
         with open(config_template_path, "r") as file:
             config = toml.load(file)
+
+        # --- AUTOPILOT EPOCHS IMPLEMENTATION ---
+        # 1. Load Manual Overrides first
+        override_epochs = None
+        current_overrides = {}
+        
+        try:
+            config_file = "scripts/lrs/style_config.json" if is_style else "scripts/lrs/person_config.json"
+            with open(config_file, "r") as f:
+                lrs_config = json.load(f)
+                if task_id in lrs_config:
+                    current_overrides = lrs_config[task_id]
+                    if "max_train_epochs" in current_overrides:
+                        override_epochs = current_overrides["max_train_epochs"]
+        except Exception as e:
+            print(f"Error loading LRS config: {e}")
+
+        # 2. Decide Epochs
+        if override_epochs:
+            print(f"[Config] Using MANUAL overrides for Epochs: {override_epochs}")
+            config["max_train_epochs"] = override_epochs
+        else:
+            # Activate Autopilot
+            adaptive_epochs = calculate_adaptive_epochs(train_data_dir, is_style)
+            config["max_train_epochs"] = adaptive_epochs
+            print(f"[Config] Using AUTOPILOT Epochs: {adaptive_epochs}")
+
+        # 3. Apply other Overrides (Noise, Rank, etc.) from JSON
+        for key, value in current_overrides.items():
+            if key != "max_train_epochs" and key != "network_args":
+                 config[key] = value
 
         # Define network configurations
         network_config_person = {
@@ -418,12 +498,45 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     print(f"ℹ️ No specific hash found. Using Defaults from {primary_filename}.")
             except: pass
 
-    # --- PHASE 3: APPLY OVERRIDES ---
+    # --- PHASE 3: APPLY SETTINGS TO CONFIG ---
+    print(f"🚀 [Config Logic] Calculating Autopilot V2...")
+    adaptive_epochs, rec_batch_size = calculate_adaptive_epochs(train_data_dir, is_style)
+
+    # 1. Epochs Strategy
+    override_epochs = lrs_settings.get("max_train_epochs") if lrs_settings else None
+    
+    if override_epochs:
+         config["max_train_epochs"] = override_epochs
+         print(f"[Config] Using MANUAL overrides for Epochs: {override_epochs} (Source: {source_file})")
+    else:
+         config["max_train_epochs"] = adaptive_epochs
+         print(f"[Config] Using AUTOPILOT V2 Epochs: {adaptive_epochs} (Target 1600 steps)")
+
+    # 2. Batch Size Strategy
+    override_bs = lrs_settings.get("train_batch_size") if lrs_settings else None
+    
+    if override_bs:
+         config["train_batch_size"] = override_bs
+         print(f"[Config] Using MANUAL overrides for Batch Size: {override_bs} (Source: {source_file})")
+    else:
+         config["train_batch_size"] = rec_batch_size
+         print(f"[Config] Using AUTOPILOT V2 Batch Size: {rec_batch_size}")
+
+    # 3. Apply other LRS settings
     if lrs_settings:
-        print(f"🚀 APPLYING LRS OVERRIDES from {source_file}...")
         for key, value in lrs_settings.items():
-            config[key] = value
-            print(f"   -> [OVERRIDE] {key}: {value}")
+            if key not in ["max_train_epochs", "train_batch_size", "network_args"]:
+                config[key] = value
+                print(f"   -> [OVERRIDE] {key}: {value}")
+
+    # 4. Apply Network Args (Special Handling)
+    if lrs_settings and "network_args" in lrs_settings:
+         config["network_args"] = lrs_settings["network_args"]
+    else:
+         # Default Network Args if none provided (Standard 128/64/Conv16/8)
+         config["network_args"] = [ "conv_dim=16", "conv_alpha=8", "dropout=null" ]
+         
+    print(f"✅ Final Configuration Applied. Epochs: {config['max_train_epochs']}, BS: {config['train_batch_size']}")
     else:
         print("⚠️ Warning: No LRS configuration (Specific or Default) could be applied.")
 

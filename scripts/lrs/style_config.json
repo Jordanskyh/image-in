@@ -506,6 +506,63 @@
             "noise_offset": 0.0411,
             "prior_loss_weight": 1.0,
             "caption_dropout_rate": 0
+        },
+        "d41ae8f7-ab35-44fb-b3ee-837c31fa36c3": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 40,
+            "min_snr_gamma": 8,
+            "noise_offset": 0.0411,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0
+        },
+        "c9f976a5-0eec-4828-a6ef-b470b408ce55": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 120,
+            "min_snr_gamma": 8,
+            "noise_offset": 0.05,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0
+        },
+        "9c11dcd2-e2b8-4dce-a4b2-38fd1db5ac3b": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 65,
+            "min_snr_gamma": 8,
+            "noise_offset": 0.0411,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0
+        },
+        "32fa129f-8370-4f5e-b318-15a0e8dcab0d": {
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 36,
+            "train_batch_size": 1,
+            "min_snr_gamma": 8,
+            "noise_offset": 0.0411,
+            "prior_loss_weight": 1.0,
+            "caption_dropout_rate": 0
         }
     }
 }
