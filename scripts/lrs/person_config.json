@@ -1,6 +1,6 @@
 {
     "default": {
-        "max_train_epochs": 55,
+        "max_train_epochs": 21,
         "save_every_n_epochs": 20,
         "train_batch_size": 4,
         "gradient_accumulation_steps": 1,
@@ -8,7 +8,7 @@
         "optimizer_args": [
             "decouple=True",
             "d_coef=1",
-            "weight_decay=0.01",
+            "weight_decay=0.001",
             "use_bias_correction=True",
             "safeguard_warmup=True"
         ],
@@ -18,217 +18,429 @@
         "lr_warmup_steps": 0,
         "noise_offset_type": "Original",
         "noise_offset": 0.0357,
-        "prior_loss_weight": 1,
-        "min_snr_gamma": 5,
+        "prior_loss_weight": 0.8,
+        "min_snr_gamma": 7,
         "scale_weight_norms": 5,
-        "caption_dropout_rate": 0,
+        "caption_dropout_rate": 0.1,
         "clip_skip": 1,
         "seed": 2951032222
     },
     "data": {
         "7d6474f05dc6940ad31182d1359e7f6390dfa92a0cbae20597bfd86d415bd0fd": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 40,
-            "min_snr_gamma": 5,
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
             "caption_dropout_rate": 0.1,
-            "noise_offset": 0.0357
+            "prior_loss_weight": 0.8
         },
         "84b1be29d81de0bf88d6c4033943d2bc4b543d9ebba9e1c9678296237f147466": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 32,
-            "min_snr_gamma": 5,
+            "network_alpha": 64,
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
             "caption_dropout_rate": 0.15,
+            "prior_loss_weight": 0.8,
             "network_args": [
-                "conv_dim=32",
-                "conv_alpha=32",
+                "conv_dim=16",
+                "conv_alpha=8",
                 "dropout=null"
             ]
         },
         "a51427f9147c3c672edacd0c1070443e50d28df4c6f7d04cd7038fb68f1e8952": {
-            "network_dim": 64,
+            "network_dim": 128,
             "network_alpha": 64,
-            "max_train_epochs": 35,
-            "min_snr_gamma": 5,
-            "caption_dropout_rate": 0.1
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "9177dab379e14f76c500ad2246352fd9387f11e2f57e2973bf9ada4d7cd4c962": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "min_snr_gamma": 5,
-            "caption_dropout_rate": 0.05
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.05,
+            "prior_loss_weight": 0.8
         },
         "2b2d23c68c5429f8108bb6f80e20cc08bbed1d3210bbba21bd674a767e2695b1": {
-            "network_dim": 64,
+            "network_dim": 128,
             "network_alpha": 64,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "70ff32b896771e2c67412f6a8299e0bf831705bb714af7e810c1466de783cdd0": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "2f2560699519e9904840f4279c6e76e8573819da773ec4b0c6a689e606508be3": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "c6efeaf411754e65b3e2395640d5f90ac6150a1d82e4b3caf8df566aa406609c": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "87a20676586c53891563895be0408c6109b83f1d891700dd6ff6c02a25cd6c47": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 35,
-            "caption_dropout_rate": 0.1
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "756995ded1a0cd274a3cf4bdb5df47926993806cc19bed0a808a4a211545ab95": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.05
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.05,
+            "prior_loss_weight": 0.8
         },
         "6042ce99f9cde5c1a8acfc32dd1b3ba7ac4523aba281c1d9295e1a6d7b98a8e7": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 32,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "a39c9825466ea06cd71c5db75963783dba07b2d2a02b9aac21452c3762493c8f": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "eb324bfcad14e8f1d46346f46ae7af7d3e58c3babbc1f699ee7c61baab291369": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 32,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "158598455e814319c65ccbf8bbae049200601b2ac4fb1429fed6158f2f5ac8bd": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "b89415872c1864f2a6ccccb34d6744021aa58eec13ab9109d4fa53931156ead4": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "162748f97994bc2ffaafdcfd900e06e245e85a9826fb77aa8568846fb6b3f15d": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 25,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "34a7aae44aeda3ba98eec73d818a4392a6226b9e00c223af02c105bda649268c": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 32,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "f04d4cd944ff8ff03dda0ad75ae479cde3402e6eb2ac9ebd1b170b59f59b21ac": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "2ed92e4825a66485b34e0ab64877228dc92628a0ecb10646b761c07570eff91f": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "46bc6498a086646889d92058d7e50398177841349bfce3181bdb5846849354b7": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.05
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.05,
+            "prior_loss_weight": 0.8
         },
         "7637327a8414801bf0bb4d6d1b574dd95c05525165ee271cc085b64f89c8cba8": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "ad7785f9ff51db0c7e07277f5f3cc474217158f242cc44a58581f56f28017c7d": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "d6d232a2821b3708d356d95aa0b8cd553d54fde4a083d0d32f2718fafc5b134c": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "27f4574bdd5f1435fb5cc682631d7941776c0cbe0423101b354ef9def60548e5": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "f0beb2d95bfe25352803339af6c50e45e43f6a36125f42c69e5b8fe8b6e07462": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "e7d0cc3356bd946337fb5e22fcff6132c7eb363abded9d32a99e42145a90309f": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.05
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.05,
+            "prior_loss_weight": 0.8
         },
         "a74734bd059b67f654909604bbe57cce7802cf41ce7cf269252366c62b2c8bf6": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "e4308bdead0e824ea25e37c6caf771f231428975d33316496452c56a34757409": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "a1fd5a9d0707d1b96b7738c4c48894f95e8ddbaa840d5aa85a3a03671479894c": {
-            "network_dim": 64,
+            "network_dim": 128,
             "network_alpha": 64,
-            "max_train_epochs": 40,
-            "caption_dropout_rate": 0.1
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "0b7169dc27a95818a024b479271167dd8bb221ee1cebf58a683378927eb447c3": {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "max_train_epochs": 45,
-            "caption_dropout_rate": 0.05
+            "network_dim": 128,
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.05,
+            "prior_loss_weight": 0.8
         },
         "f61cef4efcc21d26c0257cd9884a1b67c019d786092dfa4bc0b1ef4ed8869d80": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "noise_offset": 0.05,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         },
         "7b4b21f095f261dc26d3c4964a1ddf71dd2e907c5cd733bdb934e7228727b7a6": {
             "network_dim": 128,
-            "network_alpha": 128,
-            "max_train_epochs": 45,
-            "noise_offset": 0.1,
-            "caption_dropout_rate": 0.1
+            "network_alpha": 64,
+            "network_args": [
+                "conv_dim=16",
+                "conv_alpha=8",
+                "dropout=null"
+            ],
+            "max_train_epochs": 21,
+            "min_snr_gamma": 7,
+            "caption_dropout_rate": 0.1,
+            "prior_loss_weight": 0.8
         }
     }
 }
