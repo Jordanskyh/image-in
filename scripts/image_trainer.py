@@ -91,8 +91,56 @@ def get_model_path(path: str) -> str:
         if len(files) == 1 and files[0].endswith(".safetensors"):
             return os.path.join(path, files[0])
     return path
+def calculate_adaptive_epochs(train_data_dir, is_style):
+    """
+    Autopilot Logic: Calculate optimal epochs based on dataset size to achieve target steps.
+    Target Steps: 1500 for Person (more verification), 1000 for Style (pattern recognition).
+    """
+    try:
+        # 1. Count images
+        image_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+        num_images = sum(1 for f in os.listdir(train_data_dir) if os.path.splitext(f)[1].lower() in image_extensions)
+        
+        if num_images == 0:
+            return 20, 1 # Fallback safe default
+            
+        # 2. Set Target Steps (The "Gold Standard" - Aggressive V2)
+        # We aim for ~1600 steps regardless of task type to beat the lazy champions.
+        target_steps = 1600
+        
+        # 3. Calculate Raw Epochs needed
+        # Formula: Epochs = Target Steps / Num Images
+        # Note: This assumes Batch Size=1. If BS higher, epochs need to scale, 
+        # but for now we calculate baseline epochs for single image focus.
+        raw_epochs = int(target_steps / num_images)
+        
+        # 4. Apply Safety Brackets
+        min_epochs = 30  # Never do less than 30 (prev: 10 was too low)
+        max_epochs = 200 # Cap at 200 to stay well within time limits (prev: 300)
+        
+        adaptive_epochs = max(min_epochs, min(raw_epochs, max_epochs))
+        
+        # 5. Batch Size Recommendations
+        # Small dataset (<15) => Force BS 1 for detail
+        # Medium dataset (15-50) => BS 2 is efficient
+        # Large dataset (>50) => BS 4 to save time
+        if num_images < 15:
+            rec_batch_size = 1
+        elif num_images < 50:
+            rec_batch_size = 2
+        else:
+            rec_batch_size = 4
+        
+        print(f"[Autopilot V2] Dataset: {num_images} images | Target: {target_steps} steps")
+        print(f"[Autopilot V2] Proposed: {adaptive_epochs} Epochs, BS {rec_batch_size}")
+        
+        return adaptive_epochs, rec_batch_size
+        
+    except Exception as e:
+        print(f"[Autopilot] Error calculating epochs: {e}. Using safe default.")
+        return 30, 1
 
-def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word: str | None = None):
+
     """Get the training data directory"""
     train_data_dir = train_paths.get_image_training_images_dir(task_id)
 
@@ -229,54 +277,6 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         
         return config_path
 
-def calculate_adaptive_epochs(train_data_dir, is_style):
-    """
-    Autopilot Logic: Calculate optimal epochs based on dataset size to achieve target steps.
-    Target Steps: 1500 for Person (more verification), 1000 for Style (pattern recognition).
-    """
-    try:
-        # 1. Count images
-        image_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-        num_images = sum(1 for f in os.listdir(train_data_dir) if os.path.splitext(f)[1].lower() in image_extensions)
-        
-        if num_images == 0:
-            return 20 # Fallback safe default
-            
-        # 2. Set Target Steps (The "Gold Standard" - Aggressive V2)
-        # We aim for ~1600 steps regardless of task type to beat the lazy champions.
-        target_steps = 1600
-        
-        # 3. Calculate Raw Epochs needed
-        # Formula: Epochs = Target Steps / Num Images
-        # Note: This assumes Batch Size=1. If BS higher, epochs need to scale, 
-        # but for now we calculate baseline epochs for single image focus.
-        raw_epochs = int(target_steps / num_images)
-        
-        # 4. Apply Safety Brackets
-        min_epochs = 30  # Never do less than 30 (prev: 10 was too low)
-        max_epochs = 200 # Cap at 200 to stay well within time limits (prev: 300)
-        
-        adaptive_epochs = max(min_epochs, min(raw_epochs, max_epochs))
-        
-        # 5. Batch Size Recommendations
-        # Small dataset (<15) => Force BS 1 for detail
-        # Medium dataset (15-50) => BS 2 is efficient
-        # Large dataset (>50) => BS 4 to save time
-        if num_images < 15:
-            rec_batch_size = 1
-        elif num_images < 50:
-            rec_batch_size = 2
-        else:
-            rec_batch_size = 4
-        
-        print(f"[Autopilot V2] Dataset: {num_images} images | Target: {target_steps} steps")
-        print(f"[Autopilot V2] Proposed: {adaptive_epochs} Epochs, BS {rec_batch_size}")
-        
-        return adaptive_epochs, rec_batch_size
-        
-    except Exception as e:
-        print(f"[Autopilot] Error calculating epochs: {e}. Using safe default.")
-        return 30, 1
 
     else:
         with open(config_template_path, "r") as file:
