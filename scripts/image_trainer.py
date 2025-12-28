@@ -141,6 +141,7 @@ def calculate_adaptive_epochs(train_data_dir, is_style):
         return 30, 1
 
 
+def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word: str | None = None):
     """Get the training data directory"""
     train_data_dir = train_paths.get_image_training_images_dir(task_id)
 
