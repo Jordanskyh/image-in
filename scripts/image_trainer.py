@@ -70,10 +70,10 @@ def calculate_adaptive_steps(train_data_dir, is_style):
         
         if num_images < 15:
             # Micro Dataset (<15 Img)
-            # 504 Steps was too much (Loss 0.094). 240 was too little (Loss 0.090).
-            # Target ~350-380 steps.
+            # 378 Steps (Exp 60) was still saturated (Loss 0.094).
+            # Downgrading to Exp 45 -> Target ~280 Steps.
             rec_batch_size = 1
-            exposure = 60 # Reduced from 80
+            exposure = 45 # Reduced from 60
             hard_cap = 650 
         elif num_images < 50:
             # Small Dataset

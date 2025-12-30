@@ -36,7 +36,9 @@
         "text_encoder_lr": 4.11e-5,
         "lr_scheduler": "cosine",
         "lr_warmup_steps": 25,
-        "caption_dropout_rate": 0
+        "caption_dropout_rate": 0,
+        "network_dim": 32,
+        "network_alpha": 16
     },
     "data": {}
 }
