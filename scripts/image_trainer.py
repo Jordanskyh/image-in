@@ -472,12 +472,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
     
     if override_steps:
          config["max_train_steps"] = override_steps
-         config["max_train_epochs"] = 500 # Unreachable cap
-         print(f"[Config] Using MANUAL overrides for Steps: {override_steps}")
+         config.pop("max_train_epochs", None) # Remove Epochs to avoid conflict
+         print(f"[Config] Using MANUAL overrides for Steps: {override_steps} (Epochs Removed)")
     else:
          config["max_train_steps"] = target_steps
-         config["max_train_epochs"] = 500 # Unreachable cap to ensure Step Limit works
-         print(f"[Config] Using AUTOPILOT V6 Steps: {target_steps}")
+         config.pop("max_train_epochs", None) # Remove Epochs to avoid conflict
+         print(f"[Config] Using AUTOPILOT V6 Steps: {target_steps} (Epochs Removed)")
 
     # 2. Batch Size Strategy
     override_bs = lrs_settings.get("train_batch_size") if lrs_settings else None
@@ -503,7 +503,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
          # Default Network Args if none provided (Standard 128/64/Conv16/8)
          config["network_args"] = [ "conv_dim=16", "conv_alpha=8", "dropout=null" ]
          
-    print(f"✅ Final Configuration Applied. Epochs: {config['max_train_epochs']}, BS: {config['train_batch_size']}")
+    print(f"✅ Final Configuration Applied. Steps: {config.get('max_train_steps')}, BS: {config['train_batch_size']}")
 
 
     # Update config
