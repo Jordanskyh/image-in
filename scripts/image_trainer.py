@@ -74,7 +74,7 @@ def calculate_adaptive_steps(train_data_dir, is_style):
             # 9 images * 35 exp = 315 / BS 1 -> Wait, let's target 240.
             # 240 steps / 9 img = ~26. 
             rec_batch_size = 1
-            exposure = 30 # Reduced to hit ~240-270 range safely
+            exposure = 45 # Increased to give Prodigy more runway (~400 steps)
             hard_cap = 650 
         elif num_images < 50:
             # Small Dataset
