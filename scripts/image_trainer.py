@@ -69,9 +69,11 @@ def calculate_adaptive_steps(train_data_dir, is_style):
         # Target Steps = Num_Images * Exposure_Per_Image
         
         if num_images < 15:
-            # Micro Dataset
+            # Micro Dataset (<15 Img)
+            # 504 Steps was too much (Loss 0.094). 240 was too little (Loss 0.090).
+            # Target ~350-380 steps.
             rec_batch_size = 1
-            exposure = 80
+            exposure = 60 # Reduced from 80
             hard_cap = 650 
         elif num_images < 50:
             # Small Dataset
