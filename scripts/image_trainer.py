@@ -70,10 +70,11 @@ def calculate_adaptive_steps(train_data_dir, is_style):
         
         if num_images < 15:
             # Micro Dataset (<15 Img)
-            # 378 Steps (Exp 60) was still saturated (Loss 0.094).
-            # Downgrading to Exp 45 -> Target ~280 Steps.
+            # Autopilot V7: Target ~240 Steps (Champion Standard)
+            # 9 images * 35 exp = 315 / BS 1 -> Wait, let's target 240.
+            # 240 steps / 9 img = ~26. 
             rec_batch_size = 1
-            exposure = 45 # Reduced from 60
+            exposure = 30 # Reduced to hit ~240-270 range safely
             hard_cap = 650 
         elif num_images < 50:
             # Small Dataset
@@ -88,7 +89,8 @@ def calculate_adaptive_steps(train_data_dir, is_style):
             
         # 3. ENTROPY MODIFIER
         if is_style:
-            exposure = int(exposure * 0.7)
+            # Style task needs LESS focus per image to avoid style rigidity
+            exposure = int(exposure * 0.8) # 30 * 0.8 = 24. 9 * 24 = 216 Steps. Perfect.
             hard_cap = int(hard_cap * 0.8)
             
         # 4. GRADIENT STABILITY (BS Adjustment)
@@ -400,7 +402,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "network_alpha": 32,
             "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"],
             "clip_skip": 1,
-            "noise_offset": 0.05         # Higher Noise for Dramatic Style
+            "noise_offset": 0.035         # Balanced Noise for Style
         }
     }
     

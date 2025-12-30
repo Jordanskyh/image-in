@@ -1,44 +1,48 @@
 {
     "default_anime": {
-        "optimizer_type": "adamw",
+        "optimizer_type": "prodigy",
         "optimizer_args": [
-            "betas=(0.9, 0.999)",
-            "weight_decay=1e-03",
-            "eps=1e-08"
+            "decouple=True",
+            "d_coef=1",
+            "weight_decay=0.01",
+            "use_bias_correction=True",
+            "safeguard_warmup=True"
         ],
-        "unet_lr": 4.11e-5,
-        "text_encoder_lr": 4.11e-5,
-        "lr_scheduler": "cosine",
-        "lr_warmup_steps": 25,
+        "unet_lr": 1.0,
+        "text_encoder_lr": 1.0,
+        "lr_scheduler": "constant",
+        "lr_warmup_steps": 0,
         "caption_dropout_rate": 0
     },
     "default_realis": {
-        "optimizer_type": "adamw",
+        "optimizer_type": "prodigy",
         "optimizer_args": [
-            "betas=(0.9, 0.999)",
-            "weight_decay=1e-02",
-            "eps=1e-08"
+            "decouple=True",
+            "d_coef=1",
+            "weight_decay=0.01",
+            "use_bias_correction=True",
+            "safeguard_warmup=True"
         ],
-        "unet_lr": 2.11e-5,
-        "text_encoder_lr": 2.11e-5,
-        "lr_scheduler": "cosine",
-        "lr_warmup_steps": 50,
+        "unet_lr": 1.0,
+        "text_encoder_lr": 1.0,
+        "lr_scheduler": "constant",
+        "lr_warmup_steps": 0,
         "caption_dropout_rate": 0
     },
     "default_artistic": {
-        "optimizer_type": "adamw",
+        "optimizer_type": "prodigy",
         "optimizer_args": [
-            "betas=(0.9, 0.999)",
-            "weight_decay=1e-03",
-            "eps=1e-08"
+            "decouple=True",
+            "d_coef=1",
+            "weight_decay=0.01",
+            "use_bias_correction=True",
+            "safeguard_warmup=True"
         ],
-        "unet_lr": 4.11e-5,
-        "text_encoder_lr": 4.11e-5,
-        "lr_scheduler": "cosine",
-        "lr_warmup_steps": 25,
-        "caption_dropout_rate": 0,
-        "network_dim": 32,
-        "network_alpha": 16
+        "unet_lr": 1.0,
+        "text_encoder_lr": 1.0,
+        "lr_scheduler": "constant",
+        "lr_warmup_steps": 0,
+        "caption_dropout_rate": 0
     },
     "data": {}
 }
