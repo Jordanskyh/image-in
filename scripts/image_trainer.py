@@ -35,54 +35,9 @@ def get_model_path(path: str) -> str:
         if len(files) == 1 and files[0].endswith(".safetensors"):
             return os.path.join(path, files[0])
     return path
-def merge_model_config(default_config: dict, model_config: dict) -> dict:
-    """Merge default config with model-specific overrides."""
-    merged = {}
 
-    if isinstance(default_config, dict):
-        merged.update(default_config)
 
-    if isinstance(model_config, dict):
-        merged.update(model_config)
 
-    return merged if merged else None
-def get_config_for_model(lrs_config: dict, model_name: str, specific_only: bool = False) -> dict:
-    """Get configuration overrides based on model name."""
-    if not isinstance(lrs_config, dict):
-        return None
-
-    data = lrs_config.get("data")
-    default_config = lrs_config.get("default", {})
-
-    if isinstance(data, dict) and model_name in data:
-        return merge_model_config(default_config, data.get(model_name))
-
-    if specific_only:
-        return None
-
-    if default_config:
-        return default_config
-
-    return None
-
-def load_lrs_config(model_type: str, is_style: bool) -> dict:
-    """Load the appropriate LRS configuration based on model type and training type"""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_dir = os.path.join(script_dir, "lrs")
-
-    if model_type == "flux":
-        config_file = os.path.join(config_dir, "flux.json")
-    elif is_style:
-        config_file = os.path.join(config_dir, "style_config.json")
-    else:
-        config_file = os.path.join(config_dir, "person_config.json")
-    
-    try:
-        with open(config_file, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Warning: Could not load LRS config from {config_file}: {e}", flush=True)
-        return None
 
 
 def get_model_path(path: str) -> str:
@@ -93,8 +48,11 @@ def get_model_path(path: str) -> str:
     return path
 def calculate_adaptive_epochs(train_data_dir, is_style):
     """
-    Autopilot Logic: Calculate optimal epochs based on dataset size to achieve target steps.
-    Target Steps: 1500 for Person (more verification), 1000 for Style (pattern recognition).
+    Autopilot V5 (Information-Theoretic Scaling):
+    1. Base Exposure: Logarithmic-like scaling based on data size.
+    2. Entropy Modifier: Style tasks need ~70% exposure vs Person tasks.
+    3. Gradient Stability: Reduces Batch Size if steps per epoch are too low (<10).
+    4. Hard Capping: Prevents 'Deep Fry' on small datasets.
     """
     try:
         # 1. Count images
@@ -103,38 +61,59 @@ def calculate_adaptive_epochs(train_data_dir, is_style):
         
         if num_images == 0:
             return 20, 1 # Fallback safe default
-            
-        # 2. Set Target Steps (The "Gold Standard" - Aggressive V2)
-        # We aim for ~1600 steps regardless of task type to beat the lazy champions.
-        target_steps = 1600
-        
-        # 3. Calculate Raw Epochs needed
-        # Formula: Epochs = Target Steps / Num Images
-        # Note: This assumes Batch Size=1. If BS higher, epochs need to scale, 
-        # but for now we calculate baseline epochs for single image focus.
-        raw_epochs = int(target_steps / num_images)
-        
-        # 4. Apply Safety Brackets
-        min_epochs = 30  # Never do less than 30 (prev: 10 was too low)
-        max_epochs = 200 # Cap at 200 to stay well within time limits (prev: 300)
-        
-        adaptive_epochs = max(min_epochs, min(raw_epochs, max_epochs))
-        
-        # 5. Batch Size Recommendations
-        # Small dataset (<15) => Force BS 1 for detail
-        # Medium dataset (15-50) => BS 2 is efficient
-        # Large dataset (>50) => BS 4 to save time
+
+        # 2. DEFINE BASELINE (For SDXL Person Standard)
+        # Exposure = How many times model sees one unique image
         if num_images < 15:
+            # Micro Dataset
             rec_batch_size = 1
+            exposure = 80
+            hard_step_cap = 700 
         elif num_images < 50:
+            # Small Dataset
             rec_batch_size = 2
+            exposure = 60
+            hard_step_cap = 1200
         else:
+            # Large Dataset (Industrial Scale)
             rec_batch_size = 4
+            exposure = 40
+            hard_step_cap = 2000
+            
+        # 3. ENTROPY MODIFIER (Style vs Person)
+        if is_style:
+            # Style (Low Entropy / Pattern Based) -> Needs less time to converge
+            exposure = int(exposure * 0.7)  # 30% discount
+            hard_step_cap = int(hard_step_cap * 0.8) # Tighter cap
+            print(f"[Autopilot V5] Detected Style Task: Reducing Exposure by 30%")
+        else:
+            # Person (High Fidelity Identity) -> Needs full exposure
+            pass
+            
+        # 4. GRADIENT STABILITY CHECK (Edge Case Batch Size)
+        # Ensure at least 10 steps per epoch for optimizer warm-up stability
+        steps_per_epoch = num_images // rec_batch_size
+        if steps_per_epoch < 10 and rec_batch_size > 1:
+            rec_batch_size = max(1, rec_batch_size - 1) 
+            print(f"[Autopilot V5] Batch Size reduced to {rec_batch_size} for Gradient Stability")
+
+        # 5. FINAL CALCULATION
+        steps_per_epoch = num_images // rec_batch_size
+        if steps_per_epoch < 1: steps_per_epoch = 1
         
-        print(f"[Autopilot V2] Dataset: {num_images} images | Target: {target_steps} steps")
-        print(f"[Autopilot V2] Proposed: {adaptive_epochs} Epochs, BS {rec_batch_size}")
+        ideal_total_steps = steps_per_epoch * exposure
         
-        return adaptive_epochs, rec_batch_size
+        # Apply Hard Cap (The Anti-Deep Fry Brake)
+        final_total_steps = min(ideal_total_steps, hard_step_cap)
+        
+        # Convert back to Epochs
+        final_epochs = int(final_total_steps / steps_per_epoch)
+        if final_epochs < 1: final_epochs = 1
+        
+        print(f"[Autopilot V5] Data: {num_images} img | Type: {'Style' if is_style else 'Person'}")
+        print(f"[Autopilot V5] Plan: BS {rec_batch_size} | Exposure {exposure}x | Steps {final_total_steps} (Cap {hard_step_cap}) | Epochs {final_epochs}")
+        
+        return final_epochs, rec_batch_size
         
     except Exception as e:
         print(f"[Autopilot] Error calculating epochs: {e}. Using safe default.")
@@ -283,137 +262,146 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         with open(config_template_path, "r") as file:
             config = toml.load(file)
 
-        # --- AUTOPILOT EPOCHS IMPLEMENTATION ---
-        # 1. Load Manual Overrides first
-        override_epochs = None
-        current_overrides = {}
-        
-        try:
-            config_file = "scripts/lrs/style_config.json" if is_style else "scripts/lrs/person_config.json"
-            with open(config_file, "r") as f:
-                lrs_config = json.load(f)
-                if task_id in lrs_config:
-                    current_overrides = lrs_config[task_id]
-                    if "max_train_epochs" in current_overrides:
-                        override_epochs = current_overrides["max_train_epochs"]
-        except Exception as e:
-            print(f"Error loading LRS config: {e}")
 
-        # 2. Decide Epochs
-        if override_epochs:
-            print(f"[Config] Using MANUAL overrides for Epochs: {override_epochs}")
-            config["max_train_epochs"] = override_epochs
-        else:
-            # Activate Autopilot
-            adaptive_epochs = calculate_adaptive_epochs(train_data_dir, is_style)
-            config["max_train_epochs"] = adaptive_epochs
-            print(f"[Config] Using AUTOPILOT Epochs: {adaptive_epochs}")
 
-        # 3. Apply other Overrides (Noise, Rank, etc.) from JSON
-        for key, value in current_overrides.items():
-            if key != "max_train_epochs" and key != "network_args":
-                 config[key] = value
+        # Initialize network_id with safe default (Artistic/General)
+        network_id = 99
 
         # Define network configurations
+        # --- LAYER 2: MODEL CLASSIFICATION ---
         network_config_person = {
-        "stabilityai/stable-diffusion-xl-base-1.0": 467,
-        "Lykon/dreamshaper-xl-1-0": 888,
-        "Lykon/art-diffusion-xl-0.9": 467,
-        "SG161222/RealVisXL_V4.0": 888,
-        "stablediffusionapi/protovision-xl-v6.6": 467,
-        "stablediffusionapi/omnium-sdxl": 467,
-        "GraydientPlatformAPI/realism-engine2-xl": 888,
-        "GraydientPlatformAPI/albedobase2-xl": 888,
-        "KBlueLeaf/Kohaku-XL-Zeta": 467,
-        "John6666/hassaku-xl-illustrious-v10style-sdxl": 228,
-        "John6666/nova-anime-xl-pony-v5-sdxl": 888,
-        "cagliostrolab/animagine-xl-4.0": 699,
-        "dataautogpt3/CALAMITY": 888,
-        "dataautogpt3/ProteusSigma": 467,
-        "dataautogpt3/ProteusV0.5": 699,
-        "dataautogpt3/TempestV0.1": 456,
-        "ehristoforu/Visionix-alpha": 467,
-        "femboysLover/RealisticStockPhoto-fp16": 888,
-        "fluently/Fluently-XL-Final": 228,
-        "mann-e/Mann-E_Dreams": 456,
-        "misri/leosamsHelloworldXL_helloworldXL70": 467,
-        "misri/zavychromaxl_v90": 467,
-        "openart-custom/DynaVisionXL": 228,
-        "recoilme/colorfulxl": 228,
-        "zenless-lab/sdxl-aam-xl-anime-mix": 456,
-        "zenless-lab/sdxl-anima-pencil-xl-v5": 228,
-        "zenless-lab/sdxl-anything-xl": 228,
-        "zenless-lab/sdxl-blue-pencil-xl-v7": 467,
-        "Corcelio/mobius": 228,
-        "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 888,
-        "OnomaAIResearch/Illustrious-xl-early-release-v0": 228
+        # ANIME & ILLUSTRATION (ID: 9)
+        "zenless-lab/sdxl-aam-xl-anime-mix": 9,
+        "John6666/nova-anime-xl-pony-v5-sdxl": 9,
+        "zenless-lab/sdxl-anima-pencil-xl-v5": 9,
+        "cagliostrolab/animagine-xl-4.0": 9,
+        "zenless-lab/sdxl-anything-xl": 9,
+        "OnomaAIResearch/Illustrious-xl-early-release-v0": 9,
+        "John6666/hassaku-xl-illustrious-v10style-sdxl": 9,
+        "KBlueLeaf/Kohaku-XL-Zeta": 9,
+        "zenless-lab/sdxl-blue-pencil-xl-v7": 9,
+
+        # PHOTOREALISTIC (ID: 69)
+        "misri/leosamsHelloworldXL_helloworldXL70": 69,
+        "GraydientPlatformAPI/albedobase2-xl": 69,
+        "femboysLover/RealisticStockPhoto-fp16": 69,
+        "ifmain/UltraReal_Fine-Tune": 69,
+        "GraydientPlatformAPI/realism-engine2-xl": 69,
+        "SG161222/RealVisXL_V4.0": 69,
+
+        # ARTISTIC / 2.5D / GENERALIST (ID: 99)
+        "dataautogpt3/CALAMITY": 99,
+        "recoilme/colorfulxl": 99,
+        "dataautogpt3/ProteusV0.5": 99,
+        "fluently/Fluently-XL-Final": 99,
+        "stabilityai/stable-diffusion-xl-base-1.0": 99,
+        "openart-custom/DynaVisionXL": 99,
+        "Lykon/dreamshaper-xl-1-0": 99,
+        "dataautogpt3/ProteusSigma": 99,
+        "mann-e/Mann-E_Dreams": 99,
+        "Corcelio/mobius": 99,
+        "ehristoforu/Visionix-alpha": 99,
+        "Lykon/art-diffusion-xl-0.9": 99,
+        "stablediffusionapi/omnium-sdxl": 99,
+        "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 99,
+        "misri/zavychromaxl_v90": 99,
+        "stablediffusionapi/protovision-xl-v6.6": 99,
+        "dataautogpt3/TempestV0.1": 99,
+        "bghira/terminus-xl-velocity-v2": 99
     }
 
     network_config_style = {
-        "stabilityai/stable-diffusion-xl-base-1.0": 235,
-        "Lykon/dreamshaper-xl-1-0": 888,
-        "Lykon/art-diffusion-xl-0.9": 235,
-        "SG161222/RealVisXL_V4.0": 467,
-        "stablediffusionapi/protovision-xl-v6.6": 235,
-        "stablediffusionapi/omnium-sdxl": 235,
-        "GraydientPlatformAPI/realism-engine2-xl": 888,
-        "GraydientPlatformAPI/albedobase2-xl": 467,
-        "KBlueLeaf/Kohaku-XL-Zeta": 235,
-        "John6666/hassaku-xl-illustrious-v10style-sdxl": 888,
-        "John6666/nova-anime-xl-pony-v5-sdxl": 888,
-        "cagliostrolab/animagine-xl-4.0": 467,
-        "dataautogpt3/CALAMITY": 888,
-        "dataautogpt3/ProteusSigma": 235,
-        "dataautogpt3/ProteusV0.5": 235,
-        "dataautogpt3/TempestV0.1": 228,
-        "ehristoforu/Visionix-alpha": 235,
-        "femboysLover/RealisticStockPhoto-fp16": 467,
-        "fluently/Fluently-XL-Final": 235,
-        "mann-e/Mann-E_Dreams": 235,
-        "misri/leosamsHelloworldXL_helloworldXL70": 235,
-        "misri/zavychromaxl_v90": 235,
-        "openart-custom/DynaVisionXL": 235,
-        "recoilme/colorfulxl": 235,
-        "zenless-lab/sdxl-aam-xl-anime-mix": 235,
-        "zenless-lab/sdxl-anima-pencil-xl-v5": 235,
-        "zenless-lab/sdxl-anything-xl": 888,
-        "zenless-lab/sdxl-blue-pencil-xl-v7": 235,
-        "Corcelio/mobius": 235,
-        "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 888,
-        "OnomaAIResearch/Illustrious-xl-early-release-v0": 235
+        # ANIME & ILLUSTRATION (ID: 8) - Same models, different ID for Style tasks
+        "zenless-lab/sdxl-aam-xl-anime-mix": 8,
+        "John6666/nova-anime-xl-pony-v5-sdxl": 8,
+        "zenless-lab/sdxl-anima-pencil-xl-v5": 8,
+        "cagliostrolab/animagine-xl-4.0": 8,
+        "zenless-lab/sdxl-anything-xl": 8,
+        "OnomaAIResearch/Illustrious-xl-early-release-v0": 8,
+        "John6666/hassaku-xl-illustrious-v10style-sdxl": 8,
+        "KBlueLeaf/Kohaku-XL-Zeta": 8,
+        "zenless-lab/sdxl-blue-pencil-xl-v7": 8,
+
+        # PHOTOREALISTIC (ID: 78)
+        "misri/leosamsHelloworldXL_helloworldXL70": 78,
+        "GraydientPlatformAPI/albedobase2-xl": 78,
+        "femboysLover/RealisticStockPhoto-fp16": 78,
+        "ifmain/UltraReal_Fine-Tune": 78,
+        "GraydientPlatformAPI/realism-engine2-xl": 78,
+        "SG161222/RealVisXL_V4.0": 78,
+
+        # ARTISTIC / 2.5D / GENERALIST (ID: 118)
+        "dataautogpt3/CALAMITY": 118,
+        "recoilme/colorfulxl": 118,
+        "dataautogpt3/ProteusV0.5": 118,
+        "fluently/Fluently-XL-Final": 118,
+        "stabilityai/stable-diffusion-xl-base-1.0": 118,
+        "openart-custom/DynaVisionXL": 118,
+        "Lykon/dreamshaper-xl-1-0": 118,
+        "dataautogpt3/ProteusSigma": 118,
+        "mann-e/Mann-E_Dreams": 118,
+        "Corcelio/mobius": 118,
+        "ehristoforu/Visionix-alpha": 118,
+        "Lykon/art-diffusion-xl-0.9": 118,
+        "stablediffusionapi/omnium-sdxl": 118,
+        "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 118,
+        "misri/zavychromaxl_v90": 118,
+        "stablediffusionapi/protovision-xl-v6.6": 118,
+        "dataautogpt3/TempestV0.1": 118,
+        "bghira/terminus-xl-velocity-v2": 118
     }
 
+    # --- LAYER 3: CONFIG MAPPING (ARCHITECTURE PARAMS) ---
     config_mapping = {
-        228: {
-            "network_dim": 32,
+        # PERSON: ANIME (ID: 9)
+        9: {
+            "network_dim": 128,          # High Capacity for Anime Details
+            "network_alpha": 64,         # Stable Alpha
+            "network_args": ["conv_dim=8", "conv_alpha=4", "dropout=null"],
+            "clip_skip": 2,              # WAJIB untuk Anime
+            "noise_offset": 0.0357       # Standard
+        },
+        # PERSON: REALIS (ID: 69)
+        69: {
+            "network_dim": 64,           # Medium Capacity for Realism
             "network_alpha": 32,
-            "network_args": []
+            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"],
+            "clip_skip": 1,              # Realism need accurate semantics
+            "noise_offset": 0.02         # Low Noise for Clean Texture
         },
-        235: {
-            "network_dim": 32,
+        # PERSON: ARTISTIC (ID: 99)
+        99: {
+            "network_dim": 64,           # Balanced Capacity
             "network_alpha": 32,
-            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]
+            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"],
+            "clip_skip": 1,
+            "noise_offset": 0.0357
         },
-        456: {
-            "network_dim": 64,
-            "network_alpha": 64,
-            "network_args": []
-        },
-        467: {
-            "network_dim": 64,
-            "network_alpha": 64,
-            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]
-        },
-        699: {
-            "network_dim": 96,
-            "network_alpha": 96,
-            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]
-        },
-        888: {
+
+        # STYLE: ANIME (ID: 8)
+        8: {
             "network_dim": 128,
-            "network_alpha": 64,
-            "network_args": ["conv_dim=16", "conv_alpha=8", "dropout=null"]
+            "network_alpha": 32,         # Lower Alpha for Style (Less overfit)
+            "network_args": ["conv_dim=8", "conv_alpha=4", "dropout=null"],
+            "clip_skip": 2,
+            "noise_offset": 0.0357
         },
+        # STYLE: REALIS (ID: 78)
+        78: {
+            "network_dim": 64,
+            "network_alpha": 32,
+            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"],
+            "clip_skip": 1,
+            "noise_offset": 0.02
+        },
+        # STYLE: ARTISTIC (ID: 118)
+        118: {
+            "network_dim": 64,
+            "network_alpha": 32,
+            "network_args": ["conv_dim=4", "conv_alpha=4", "dropout=null"],
+            "clip_skip": 1,
+            "noise_offset": 0.05         # Higher Noise for Dramatic Style
+        }
     }
     
     # --- CONFIGURATION PIPELINE ---
@@ -437,67 +425,45 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     config["network_alpha"] = network_config["network_alpha"]
                     config["network_args"] = network_config["network_args"]
 
-    # 2. Apply LRS Overrides (Top Layer) - The "Universal Patcher"
+    # 2. Apply LRS Strategy (Category Based)
     lrs_settings = None
     source_file = None
-    model_hash = hash_model(model_name)
-    print(f"🔍 Calculated Model Hash: {model_hash}")
     
     # Determine config library path
     config_dir = os.path.join(script_dir, "lrs")
     
-    # Priority List for Cross-Lookup
-    files_to_check = []
-    if model_type == "flux":
-        files_to_check = ["flux.json"]
-    else:
-        primary = "style_config.json" if is_style else "person_config.json"
-        secondary = "person_config.json" if is_style else "style_config.json"
-        files_to_check = [primary, secondary]
-
-    # --- PHASE 1: SEARCH SPECIFIC MATCH ---
-    for filename in files_to_check:
-        config_path = os.path.join(config_dir, filename)
-        if not os.path.exists(config_path):
-            continue
-            
+    # Select Primary Config File
+    primary_filename = "flux.json" if model_type == "flux" else ("style_config.json" if is_style else "person_config.json")
+    config_path = os.path.join(config_dir, primary_filename)
+    
+    if os.path.exists(config_path):
         try:
             with open(config_path, 'r') as f:
-                current_lrs = json.load(f)
+                primary_lrs = json.load(f)
             
-            # Try specific Hash match first (Specific Only = No Default fallback yet)
-            match = get_config_for_model(current_lrs, model_hash, specific_only=True)
-            if match:
-                lrs_settings = match
-                source_file = filename
-                print(f"✅ Found Specific Hash match in {filename}!")
-                break
-                
-            # Try specific Repo Name match second
-            if expected_repo_name:
-                match = get_config_for_model(current_lrs, expected_repo_name, specific_only=True)
-                if match:
-                    lrs_settings = match
-                    source_file = filename
-                    print(f"✅ Found Specific Repo Name match in {filename}!")
-                    break
-        except Exception as e:
-            print(f"⚠️ Error reading {filename}: {e}")
-            continue
+            # Determine Category Key based on Config ID
+            target_default_key = "default_artistic" # Safe fallback
+            
+            if network_id in [9, 8]:
+                target_default_key = "default_anime"
+            elif network_id in [69, 78]:
+                target_default_key = "default_realis"
+            
+            # Flux Handling (Single Default for now)
+            if model_type == "flux":
+                 target_default_key = "default"
 
-    # --- PHASE 2: FALLBACK TO PRIMARY DEFAULT ---
-    if not lrs_settings:
-        primary_filename = files_to_check[0]
-        config_path = os.path.join(config_dir, primary_filename)
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    primary_lrs = json.load(f)
-                lrs_settings = primary_lrs.get("default", {})
-                source_file = primary_filename
-                if lrs_settings:
-                    print(f"ℹ️ No specific hash found. Using Defaults from {primary_filename}.")
-            except: pass
+            lrs_settings = primary_lrs.get(target_default_key, {})
+            
+            # Fallback to generic 'default' if specific category missing
+            if not lrs_settings:
+                    lrs_settings = primary_lrs.get("default", {})
+
+            source_file = primary_filename
+            if lrs_settings:
+                print(f"✅ [LRS Strategy] Loaded '{target_default_key}' from {primary_filename}.")
+        except Exception as e:
+            print(f"⚠️ Error loading strategy from {primary_filename}: {e}")
 
     # --- PHASE 3: APPLY SETTINGS TO CONFIG ---
     print(f"🚀 [Config Logic] Calculating Autopilot V2...")
@@ -616,10 +582,7 @@ def run_training(model_type, config_path):
         print(f"Command: {' '.join(e.cmd) if isinstance(e.cmd, list) else e.cmd}", flush=True)
         raise RuntimeError(f"Training subprocess failed with exit code {e.returncode}")
 
-def hash_model(model: str) -> str:
-    model_bytes = model.encode('utf-8')
-    hashed = hashlib.sha256(model_bytes).hexdigest()
-    return hashed 
+ 
 
 async def main():
     print("---STARTING IMAGE TRAINING SCRIPT---", flush=True)
