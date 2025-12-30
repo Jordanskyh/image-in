@@ -46,78 +46,76 @@ def get_model_path(path: str) -> str:
         if len(files) == 1 and files[0].endswith(".safetensors"):
             return os.path.join(path, files[0])
     return path
-def calculate_adaptive_epochs(train_data_dir, is_style):
+def calculate_adaptive_steps(train_data_dir, is_style):
     """
-    Autopilot V5 (Information-Theoretic Scaling):
-    1. Base Exposure: Logarithmic-like scaling based on data size.
-    2. Entropy Modifier: Style tasks need ~70% exposure vs Person tasks.
-    3. Gradient Stability: Reduces Batch Size if steps per epoch are too low (<10).
-    4. Hard Capping: Prevents 'Deep Fry' on small datasets.
+    Autopilot V6 (Step-Based Precision):
+    Calculates exact Target Steps instead of Epochs.
+    This bypasses the 'Hidden Repeats' multiplier problem in datasets.
     """
     try:
-        # 1. Count images
+        # 1. Count images Recursively (Fix for subfolders)
         image_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-        num_images = sum(1 for f in os.listdir(train_data_dir) if os.path.splitext(f)[1].lower() in image_extensions)
+        num_images = 0
+        for root, dirs, files in os.walk(train_data_dir):
+            for file in files:
+                if os.path.splitext(file)[1].lower() in image_extensions:
+                    num_images += 1
         
         if num_images == 0:
-            return 20, 1 # Fallback safe default
+            print(f"⚠️ Autopilot found 0 images in {train_data_dir}. Using Default 1000 Steps.")
+            return 1000, 1, 0 # Steps, BS, Epochs(Placeholder)
 
-        # 2. DEFINE BASELINE (For SDXL Person Standard)
-        # Exposure = How many times model sees one unique image
+        # 2. DEFINE BASELINE EXPOSURE (Step Logic)
+        # Target Steps = Num_Images * Exposure_Per_Image
+        
         if num_images < 15:
             # Micro Dataset
             rec_batch_size = 1
             exposure = 80
-            hard_step_cap = 700 
+            hard_cap = 650 
         elif num_images < 50:
             # Small Dataset
             rec_batch_size = 2
             exposure = 60
-            hard_step_cap = 1200
+            hard_cap = 1000
         else:
-            # Large Dataset (Industrial Scale)
+            # Large Dataset
             rec_batch_size = 4
             exposure = 40
-            hard_step_cap = 2000
+            hard_cap = 1600
             
-        # 3. ENTROPY MODIFIER (Style vs Person)
+        # 3. ENTROPY MODIFIER
         if is_style:
-            # Style (Low Entropy / Pattern Based) -> Needs less time to converge
-            exposure = int(exposure * 0.7)  # 30% discount
-            hard_step_cap = int(hard_step_cap * 0.8) # Tighter cap
-            print(f"[Autopilot V5] Detected Style Task: Reducing Exposure by 30%")
-        else:
-            # Person (High Fidelity Identity) -> Needs full exposure
-            pass
+            exposure = int(exposure * 0.7)
+            hard_cap = int(hard_cap * 0.8)
             
-        # 4. GRADIENT STABILITY CHECK (Edge Case Batch Size)
-        # Ensure at least 10 steps per epoch for optimizer warm-up stability
-        steps_per_epoch = num_images // rec_batch_size
-        if steps_per_epoch < 10 and rec_batch_size > 1:
-            rec_batch_size = max(1, rec_batch_size - 1) 
-            print(f"[Autopilot V5] Batch Size reduced to {rec_batch_size} for Gradient Stability")
+        # 4. GRADIENT STABILITY (BS Adjustment)
+        if (num_images // rec_batch_size) < 10 and rec_batch_size > 1:
+            rec_batch_size = max(1, rec_batch_size - 1)
 
         # 5. FINAL CALCULATION
-        steps_per_epoch = num_images // rec_batch_size
-        if steps_per_epoch < 1: steps_per_epoch = 1
+        ideal_steps = num_images * exposure
         
-        ideal_total_steps = steps_per_epoch * exposure
+        # Adjust for Batch Size (Steps = Total_Img_Exposure / BS)
+        # Exposure is "How many times we process the image".
+        # If BS=1, Steps = Num * Exp.
+        # If BS=2, Steps = (Num * Exp) / 2.
+        final_steps = int(ideal_steps / rec_batch_size)
         
-        # Apply Hard Cap (The Anti-Deep Fry Brake)
-        final_total_steps = min(ideal_total_steps, hard_step_cap)
+        # Apply Hard Cap
+        final_steps = min(final_steps, hard_cap)
         
-        # Convert back to Epochs
-        final_epochs = int(final_total_steps / steps_per_epoch)
-        if final_epochs < 1: final_epochs = 1
+        # Enforce Minimum (Warmup)
+        final_steps = max(final_steps, 200)
+
+        print(f"[Autopilot V6] Data: {num_images} img (Recursive) | Type: {'Style' if is_style else 'Person'}")
+        print(f"[Autopilot V6] Plan: BS {rec_batch_size} | Exposure {exposure}x | Target Steps {final_steps} (Cap {hard_cap})")
         
-        print(f"[Autopilot V5] Data: {num_images} img | Type: {'Style' if is_style else 'Person'}")
-        print(f"[Autopilot V5] Plan: BS {rec_batch_size} | Exposure {exposure}x | Steps {final_total_steps} (Cap {hard_step_cap}) | Epochs {final_epochs}")
-        
-        return final_epochs, rec_batch_size
+        return final_steps, rec_batch_size, num_images
         
     except Exception as e:
-        print(f"[Autopilot] Error calculating epochs: {e}. Using safe default.")
-        return 30, 1
+        print(f"[Autopilot] Error: {e}. Using Default 1000 Steps.")
+        return 1000, 1, 0
 
 
 def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word: str | None = None):
@@ -466,28 +464,30 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             print(f"⚠️ Error loading strategy from {primary_filename}: {e}")
 
     # --- PHASE 3: APPLY SETTINGS TO CONFIG ---
-    print(f"🚀 [Config Logic] Calculating Autopilot V2...")
-    adaptive_epochs, rec_batch_size = calculate_adaptive_epochs(train_data_dir, is_style)
+    print(f"🚀 [Config Logic] Calculating Autopilot V6 (Step-Based)...")
+    target_steps, rec_batch_size, num_images_found = calculate_adaptive_steps(train_data_dir, is_style)
 
-    # 1. Epochs Strategy
-    override_epochs = lrs_settings.get("max_train_epochs") if lrs_settings else None
+    # 1. Steps Strategy (Primary Control)
+    override_steps = lrs_settings.get("max_train_steps") if lrs_settings else None
     
-    if override_epochs:
-         config["max_train_epochs"] = override_epochs
-         print(f"[Config] Using MANUAL overrides for Epochs: {override_epochs} (Source: {source_file})")
+    if override_steps:
+         config["max_train_steps"] = override_steps
+         config["max_train_epochs"] = 500 # Unreachable cap
+         print(f"[Config] Using MANUAL overrides for Steps: {override_steps}")
     else:
-         config["max_train_epochs"] = adaptive_epochs
-         print(f"[Config] Using AUTOPILOT V2 Epochs: {adaptive_epochs} (Target 1600 steps)")
+         config["max_train_steps"] = target_steps
+         config["max_train_epochs"] = 500 # Unreachable cap to ensure Step Limit works
+         print(f"[Config] Using AUTOPILOT V6 Steps: {target_steps}")
 
     # 2. Batch Size Strategy
     override_bs = lrs_settings.get("train_batch_size") if lrs_settings else None
     
     if override_bs:
          config["train_batch_size"] = override_bs
-         print(f"[Config] Using MANUAL overrides for Batch Size: {override_bs} (Source: {source_file})")
+         print(f"[Config] Using MANUAL overrides for Batch Size: {override_bs}")
     else:
          config["train_batch_size"] = rec_batch_size
-         print(f"[Config] Using AUTOPILOT V2 Batch Size: {rec_batch_size}")
+         print(f"[Config] Using AUTOPILOT V6 Batch Size: {rec_batch_size}")
 
     # 3. Apply other LRS settings
     if lrs_settings:
