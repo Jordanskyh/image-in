@@ -46,7 +46,7 @@ def get_model_path(path: str) -> str:
         if len(files) == 1 and files[0].endswith(".safetensors"):
             return os.path.join(path, files[0])
     return path
-def calculate_adaptive_steps(train_data_dir, is_style):
+def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
     """
     Autopilot V6 (Step-Based Precision):
     Calculates exact Target Steps instead of Epochs.
@@ -68,16 +68,13 @@ def calculate_adaptive_steps(train_data_dir, is_style):
         # 2. DEFINE BASELINE EXPOSURE (Step Logic)
         # Target Steps = Num_Images * Exposure_Per_Image
         
-        # FLUX PRE-CHECK: Flow Matching needs MUCH less exposure than Diffusion
-        is_flux = False # Will be determined by caller if possible, but let's detect from path
-        if "flux" in train_data_dir.lower() or (hasattr(sys, '_getframe') and "flux" in str(sys._getframe(1).f_locals.get('model_type', '')).lower()):
-             is_flux = True
-
-        if is_flux:
-            # FLUX Mode: High Capacity model, lower exposure needed
+        if model_type == "flux":
+            # FLUX Mode: High Capacity model, but need enough exposure to generalize (Champion strategy)
             rec_batch_size = 4 if num_images > 20 else 2
-            exposure = 18 # Scientific baseline for FLUX
-            hard_cap = 500
+            if num_images < 15:
+                rec_batch_size = 1 # Force BS 1 for micro-datasets to ensure precision
+            exposure = 35 # High Exposure for Flux to avoid failed samples (Sample I fix)
+            hard_cap = 800
         elif num_images < 15:
             # Micro Dataset (<15 Img)
             rec_batch_size = 1
@@ -484,7 +481,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     # --- PHASE 3: APPLY SETTINGS TO CONFIG ---
     print(f"🚀 [Config Logic] Calculating Autopilot V6 (Step-Based)...")
-    target_steps, rec_batch_size, num_images_found = calculate_adaptive_steps(train_data_dir, is_style)
+    target_steps, rec_batch_size, num_images_found = calculate_adaptive_steps(train_data_dir, is_style, model_type)
 
     # 1. Steps Strategy (Primary Control)
     override_steps = lrs_settings.get("max_train_steps") if lrs_settings else None
