@@ -68,19 +68,26 @@ def calculate_adaptive_steps(train_data_dir, is_style):
         # 2. DEFINE BASELINE EXPOSURE (Step Logic)
         # Target Steps = Num_Images * Exposure_Per_Image
         
-        if num_images < 15:
+        # FLUX PRE-CHECK: Flow Matching needs MUCH less exposure than Diffusion
+        is_flux = False # Will be determined by caller if possible, but let's detect from path
+        if "flux" in train_data_dir.lower() or (hasattr(sys, '_getframe') and "flux" in str(sys._getframe(1).f_locals.get('model_type', '')).lower()):
+             is_flux = True
+
+        if is_flux:
+            # FLUX Mode: High Capacity model, lower exposure needed
+            rec_batch_size = 4 if num_images > 20 else 2
+            exposure = 18 # Scientific baseline for FLUX
+            hard_cap = 500
+        elif num_images < 15:
             # Micro Dataset (<15 Img)
-            # Autopilot V7: Target ~240 Steps (Champion Standard)
-            # 9 images * 35 exp = 315 / BS 1 -> Wait, let's target 240.
-            # 240 steps / 9 img = ~26. 
             rec_batch_size = 1
-            exposure = 30 # Rollback to safe baseline
+            exposure = 30 
             hard_cap = 650 
         elif num_images < 50:
             # Small Dataset
             rec_batch_size = 2
-            exposure = 60 # Strictly back to V6 baseline
-            hard_cap = 1000 # Strictly back to V6 baseline
+            exposure = 60 
+            hard_cap = 1000 
         else:
             # Large Dataset
             rec_batch_size = 4
@@ -501,6 +508,13 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             if key not in ["max_train_epochs", "train_batch_size", "network_args"]:
                 config[key] = value
                 print(f"   -> [OVERRIDE] {key}: {value}")
+
+    # Special for FLUX: Guarantee network_dim and network_alpha from JSON if available
+    if model_type == "flux" and lrs_settings:
+        if "network_dim" in lrs_settings:
+            config["network_dim"] = lrs_settings["network_dim"]
+        if "network_alpha" in lrs_settings:
+            config["network_alpha"] = lrs_settings["network_alpha"]
 
     # 4. Apply Network Args (Special Handling)
     if lrs_settings and "network_args" in lrs_settings:
