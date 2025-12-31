@@ -317,6 +317,7 @@ class FluxNetworkTrainer(train_network.NetworkTrainer):
         latents,
         batch,
         text_encoder_conds,
+        uncond_text_encoder_conds, # Pintu tambahan agar urutan pas
         unet: flux_models.Flux,
         network,
         weight_dtype,
