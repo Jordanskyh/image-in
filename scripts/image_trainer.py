@@ -519,8 +519,8 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
     # 4. Apply Network Args (Special Handling)
     if lrs_settings and "network_args" in lrs_settings:
          config["network_args"] = lrs_settings["network_args"]
-    else:
-         # Default Network Args if none provided (Standard 128/64/Conv16/8)
+    elif model_type != "flux":
+         # Default Network Args for SDXL ONLY if none provided
          config["network_args"] = [ "conv_dim=16", "conv_alpha=8", "dropout=null" ]
          
     print(f"✅ Final Configuration Applied. Steps: {config.get('max_train_steps')}, BS: {config['train_batch_size']}")

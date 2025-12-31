@@ -39,7 +39,7 @@ min_bucket_reso = 256
 mixed_precision = "bf16"                                                                                                                                                       
 model_prediction_type = "raw"                                                                                                                                                  
 # network_alpha = 64
-network_args = [ "train_double_block_indices=all", "train_single_block_indices=all", "train_t5xxl=True",]                                                                      
+# network_args = [ "train_double_block_indices=all", "train_single_block_indices=all", "train_t5xxl=True",]                                                                      
 # network_dim = 128                                                                                                                                                              
 network_module = "networks.lora_flux"                                                                                                                                          
 noise_offset_type = "Original"                                                                                                                                                 
