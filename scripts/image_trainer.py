@@ -444,7 +444,13 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
     config_dir = os.path.join(script_dir, "lrs")
     
     # Select Primary Config File
-    primary_filename = "flux.json" if model_type == "flux" else ("style_config.json" if is_style else "person_config.json")
+    # PRIORITAS: Flux harus lari ke flux.json, baru kemudian cek Style vs Person
+    if model_type == "flux":
+        primary_filename = "flux.json"
+    elif is_style:
+        primary_filename = "style_config.json"
+    else:
+        primary_filename = "person_config.json"
     config_path = os.path.join(config_dir, primary_filename)
     
     if os.path.exists(config_path):
@@ -566,7 +572,7 @@ def run_training(model_type, config_path):
             "--num_processes", "1",
             "--num_machines", "1",
             "--num_cpu_threads_per_process", "2",
-            f"/app/sd-scripts/{model_type}_train_network.py",
+            f"/app/sd-script/flux_train_network.py", 
             "--config_file", config_path
         ]
     elif model_type in ["z-image", "qwen-image"]:
