@@ -74,7 +74,7 @@ def calculate_adaptive_steps(train_data_dir, is_style):
             # 9 images * 35 exp = 315 / BS 1 -> Wait, let's target 240.
             # 240 steps / 9 img = ~26. 
             rec_batch_size = 1
-            exposure = 35 # Optimized "Golden Mean" (Target ~315 steps)
+            exposure = 30 # Rollback to safe baseline
             hard_cap = 650 
         elif num_images < 50:
             # Small Dataset
