@@ -484,7 +484,7 @@ class NetworkTrainer:
             network,
             weight_dtype,
             train_unet,
-            is_train=is_train,
+            is_train, # Pass as positional argument only
         )
 
         huber_c = train_util.get_huber_threshold_if_needed(args, timesteps, noise_scheduler)
