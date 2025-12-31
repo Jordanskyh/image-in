@@ -79,8 +79,8 @@ def calculate_adaptive_steps(train_data_dir, is_style):
         elif num_images < 50:
             # Small Dataset
             rec_batch_size = 2
-            exposure = 60
-            hard_cap = 1000
+            exposure = 60 # Strictly back to V6 baseline
+            hard_cap = 1000 # Strictly back to V6 baseline
         else:
             # Large Dataset
             rec_batch_size = 4
@@ -94,7 +94,9 @@ def calculate_adaptive_steps(train_data_dir, is_style):
             hard_cap = int(hard_cap * 0.8)
             
         # 4. GRADIENT STABILITY (BS Adjustment)
-        if (num_images // rec_batch_size) < 10 and rec_batch_size > 1:
+        # Surgical Fix: Only drop to BS 1 if images per batch is truly too low (< 6)
+        # This keeps 18 images at BS 2 (18/2=9) but Visionix 45 images (45/2=22) remains untouched.
+        if (num_images // rec_batch_size) < 6 and rec_batch_size > 1:
             rec_batch_size = max(1, rec_batch_size - 1)
 
         # 5. FINAL CALCULATION
