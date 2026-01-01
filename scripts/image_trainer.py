@@ -29,6 +29,7 @@ from core.models.utility_models import ImageModelType
 # --- HELPERS ---
 
 def get_model_path(path: str) -> str:
+    """Finds the actual .safetensors file ONLY for single-file models"""
     if os.path.isdir(path):
         files = [f for f in os.listdir(path) if f.endswith(".safetensors")]
         if len(files) == 1: return os.path.join(path, files[0])
@@ -42,6 +43,7 @@ def get_config_for_model(config_dict, model_id, specific_only=False):
     return None if specific_only else config_dict.get("default")
 
 def patch_toolkit(obj, overrides):
+    """Recursively applies overrides to nested dictionaries (AI-Toolkit)"""
     if isinstance(obj, dict):
         for k, v in obj.items():
             if k in overrides:
@@ -152,20 +154,36 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "zenless-lab/sdxl-anima-pencil-xl-v5": 9, "cagliostrolab/animagine-xl-4.0": 9,
             "zenless-lab/sdxl-anything-xl": 9, "OnomaAIResearch/Illustrious-xl-early-release-v0": 9,
             "John6666/hassaku-xl-illustrious-v10style-sdxl": 9, "KBlueLeaf/Kohaku-XL-Zeta": 9,
-            "zenless-lab/sdxl-blue-pencil-xl-v7": 9, "misri/leosamsHelloworldXL_helloworldXL70": 69,
-            "GraydientPlatformAPI/albedobase2-xl": 69, "femboysLover/RealisticStockPhoto-fp16": 69,
-            "ifmain/UltraReal_Fine-Tune": 69, "GraydientPlatformAPI/realism-engine2-xl": 69,
-            "SG161222/RealVisXL_V4.0": 69
+            "zenless-lab/sdxl-blue-pencil-xl-v7": 9, 
+            "misri/leosamsHelloworldXL_helloworldXL70": 69, "GraydientPlatformAPI/albedobase2-xl": 69, 
+            "femboysLover/RealisticStockPhoto-fp16": 69, "ifmain/UltraReal_Fine-Tune": 69, 
+            "GraydientPlatformAPI/realism-engine2-xl": 69, "SG161222/RealVisXL_V4.0": 69,
+            "dataautogpt3/CALAMITY": 99, "recoilme/colorfulxl": 99, "dataautogpt3/ProteusV0.5": 99,
+            "fluently/Fluently-XL-Final": 99, "stabilityai/stable-diffusion-xl-base-1.0": 99,
+            "openart-custom/DynaVisionXL": 99, "Lykon/dreamshaper-xl-1-0": 99, "dataautogpt3/ProteusSigma": 99,
+            "mann-e/Mann-E_Dreams": 99, "Corcelio/mobius": 99, "ehristoforu/Visionix-alpha": 99,
+            "Lykon/art-diffusion-xl-0.9": 99, "stablediffusionapi/omnium-sdxl": 99,
+            "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 99, "misri/zavychromaxl_v90": 99,
+            "stablediffusionapi/protovision-xl-v6.6": 99, "dataautogpt3/TempestV0.1": 99,
+            "bghira/terminus-xl-velocity-v2": 99
         }
         sdxl_style_map = {
             "zenless-lab/sdxl-aam-xl-anime-mix": 8, "John6666/nova-anime-xl-pony-v5-sdxl": 8,
             "zenless-lab/sdxl-anima-pencil-xl-v5": 8, "cagliostrolab/animagine-xl-4.0": 8,
             "zenless-lab/sdxl-anything-xl": 8, "OnomaAIResearch/Illustrious-xl-early-release-v0": 8,
             "John6666/hassaku-xl-illustrious-v10style-sdxl": 8, "KBlueLeaf/Kohaku-XL-Zeta": 8,
-            "zenless-lab/sdxl-blue-pencil-xl-v7": 8, "misri/leosamsHelloworldXL_helloworldXL70": 78,
-            "GraydientPlatformAPI/albedobase2-xl": 78, "femboysLover/RealisticStockPhoto-fp16": 78,
-            "ifmain/UltraReal_Fine-Tune": 78, "GraydientPlatformAPI/realism-engine2-xl": 78,
-            "SG161222/RealVisXL_V4.0": 78
+            "zenless-lab/sdxl-blue-pencil-xl-v7": 8, 
+            "misri/leosamsHelloworldXL_helloworldXL70": 78, "GraydientPlatformAPI/albedobase2-xl": 78, 
+            "femboysLover/RealisticStockPhoto-fp16": 78, "ifmain/UltraReal_Fine-Tune": 78, 
+            "GraydientPlatformAPI/realism-engine2-xl": 78, "SG161222/RealVisXL_V4.0": 78,
+            "dataautogpt3/CALAMITY": 118, "recoilme/colorfulxl": 118, "dataautogpt3/ProteusV0.5": 118,
+            "fluently/Fluently-XL-Final": 118, "stabilityai/stable-diffusion-xl-base-1.0": 118,
+            "openart-custom/DynaVisionXL": 118, "Lykon/dreamshaper-xl-1-0": 118, "dataautogpt3/ProteusSigma": 118,
+            "mann-e/Mann-E_Dreams": 118, "Corcelio/mobius": 118, "ehristoforu/Visionix-alpha": 118,
+            "Lykon/art-diffusion-xl-0.9": 118, "stablediffusionapi/omnium-sdxl": 118,
+            "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 118, "misri/zavychromaxl_v90": 118,
+            "stablediffusionapi/protovision-xl-v6.6": 118, "dataautogpt3/TempestV0.1": 118,
+            "bghira/terminus-xl-velocity-v2": 118
         }
         
         if model_type == "sdxl":
