@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Advanced Image Trainer (SDXL / FLUX / Z-IMAGE / QWEN)
+Playground - Mr. Toothless
 Final Tournament Edition - 100% Verified Logic
 """
 
@@ -29,9 +29,11 @@ from core.models.utility_models import ImageModelType
 # --- HELPERS ---
 
 def get_model_path(path: str) -> str:
+    """Finds the actual .safetensors file ONLY for single-file models"""
     if os.path.isdir(path):
         files = [f for f in os.listdir(path) if f.endswith(".safetensors")]
-        if len(files) == 1: return os.path.join(path, files[0])
+        if len(files) == 1:
+            return os.path.join(path, files[0])
     return path
 
 def hash_model(model_name: str) -> str:
@@ -42,6 +44,7 @@ def get_config_for_model(config_dict, model_id, specific_only=False):
     return None if specific_only else config_dict.get("default")
 
 def patch_toolkit(obj, overrides):
+    """Recursively applies overrides to nested dictionaries (AI-Toolkit)"""
     if isinstance(obj, dict):
         for k, v in obj.items():
             if k in overrides:
@@ -90,15 +93,21 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         with open(tmpl_p, "r") as f: config = yaml.safe_load(f)
         for proc in config.get('config', {}).get('process', []):
             if 'model' in proc:
-                proc['model']['name_or_path'] = model_path if model_type == "qwen-image" else get_model_path(model_path)
+                # FIX: Toolkit models (Z-Image/Qwen) ALWAYS need the directory path
+                proc['model']['name_or_path'] = model_path
+                
                 if 'training_folder' in proc:
                     out = train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
                     os.makedirs(out, exist_ok=True)
                     proc['training_folder'] = out
+                
+                # Assistant LoRA Fix
                 if proc['model'].get('assistant_lora_path') and not os.path.exists(proc['model']['assistant_lora_path']):
-                    m_dir = os.path.dirname(get_model_path(model_path))
+                    m_file = get_model_path(model_path)
+                    m_dir = m_file if os.path.isdir(m_file) else os.path.dirname(m_file)
                     alt = os.path.join(m_dir, os.path.basename(proc['model']['assistant_lora_path']))
                     if os.path.exists(alt): proc['model']['assistant_lora_path'] = alt
+        
             if 'datasets' in proc:
                 for ds in proc['datasets']: ds['folder_path'] = train_data_dir
             if trigger_word: proc['trigger_word'] = trigger_word
@@ -123,6 +132,8 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     else:
         with open(tmpl_p, "r") as f: config = toml.load(f)
+        
+        # RESTORED: Explicit SDXL Mapping (Safety First)
         sdxl_person_map = {
             "zenless-lab/sdxl-aam-xl-anime-mix": 9, "John6666/nova-anime-xl-pony-v5-sdxl": 9,
             "zenless-lab/sdxl-anima-pencil-xl-v5": 9, "cagliostrolab/animagine-xl-4.0": 9,
@@ -133,17 +144,31 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "ifmain/UltraReal_Fine-Tune": 69, "GraydientPlatformAPI/realism-engine2-xl": 69,
             "SG161222/RealVisXL_V4.0": 69
         }
+        sdxl_style_map = {
+            "zenless-lab/sdxl-aam-xl-anime-mix": 8, "John6666/nova-anime-xl-pony-v5-sdxl": 8,
+            "zenless-lab/sdxl-anima-pencil-xl-v5": 8, "cagliostrolab/animagine-xl-4.0": 8,
+            "zenless-lab/sdxl-anything-xl": 8, "OnomaAIResearch/Illustrious-xl-early-release-v0": 8,
+            "John6666/hassaku-xl-illustrious-v10style-sdxl": 8, "KBlueLeaf/Kohaku-XL-Zeta": 8,
+            "zenless-lab/sdxl-blue-pencil-xl-v7": 8, "misri/leosamsHelloworldXL_helloworldXL70": 78,
+            "GraydientPlatformAPI/albedobase2-xl": 78, "femboysLover/RealisticStockPhoto-fp16": 78,
+            "ifmain/UltraReal_Fine-Tune": 78, "GraydientPlatformAPI/realism-engine2-xl": 78,
+            "SG161222/RealVisXL_V4.0": 78
+        }
         
         if model_type == "sdxl":
-            nid = (sdxl_person_map.get(model_name, 99) + 9) if is_style else sdxl_person_map.get(model_name, 99)
+            nid = sdxl_style_map.get(model_name, 118) if is_style else sdxl_person_map.get(model_name, 99)
             archs = {
+                8:  {"dim": 128, "alpha": 32, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
                 9:  {"dim": 128, "alpha": 64, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
                 69: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
-                99: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]}
+                78: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
+                99: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
+                118: {"dim": 64, "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]}
             }
-            arch = archs.get(nid if nid < 100 else 99, archs[99])
+            arch = archs.get(nid, archs[99])
             config.update({"network_dim": arch["dim"], "network_alpha": arch["alpha"], "network_args": arch["args"]})
 
+        # Hyperparameter Selection
         lrs_fn = "flux.json" if model_type == "flux" else ("style_config.json" if is_style else "person_config.json")
         lrs_p = os.path.join(script_dir, "lrs", lrs_fn)
         lrs_settings = {}
@@ -158,7 +183,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         config.update({
             "max_train_steps": lrs_settings.get("max_train_steps", steps),
             "train_batch_size": lrs_settings.get("train_batch_size", bs),
-            "pretrained_model_name_or_path": model_path,
+            "pretrained_model_name_or_path": model_path if model_type == "flux" else get_model_path(model_path),
             "train_data_dir": train_data_dir,
             "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
         })
