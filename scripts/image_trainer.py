@@ -35,17 +35,16 @@ def get_model_path(path: str) -> str:
         if len(files) == 1 and files[0].endswith(".safetensors"):
             return os.path.join(path, files[0])
     return path
+def hash_model(model_name):
+    return hashlib.sha256(model_name.encode()).hexdigest()
 
-
-
-
-
-def get_model_path(path: str) -> str:
-    if os.path.isdir(path):
-        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-        if len(files) == 1 and files[0].endswith(".safetensors"):
-            return os.path.join(path, files[0])
-    return path
+def get_config_for_model(config_dict, model_id, specific_only=False):
+    """Search for a specific model hash first, then fallback to 'default'"""
+    if model_id in config_dict:
+        return config_dict[model_id]
+    if specific_only:
+        return None
+    return config_dict.get("default")
 def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
     """
     Autopilot V6 (Step-Based Precision):
