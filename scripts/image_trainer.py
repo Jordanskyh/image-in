@@ -73,8 +73,8 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             rec_batch_size = 4 if num_images > 20 else 2
             if num_images < 15:
                 rec_batch_size = 1 # Force BS 1 for micro-datasets to ensure precision
-            exposure = 35 # High Exposure for Flux to avoid failed samples (Sample I fix)
-            hard_cap = 800
+            exposure = 120 # High-Energy Exposure to match champion energy (100-150 range)
+            hard_cap = 1200
         elif num_images < 15:
             # Micro Dataset (<15 Img)
             rec_batch_size = 1
