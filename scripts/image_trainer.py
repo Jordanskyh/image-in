@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Playground - Mr. Toothless
-Final Tournament Edition - 100% Verified Logic
+Tournament Edition - Final FIXED & STABLE
 """
 
 import argparse
@@ -29,11 +29,9 @@ from core.models.utility_models import ImageModelType
 # --- HELPERS ---
 
 def get_model_path(path: str) -> str:
-    """Finds the actual .safetensors file ONLY for single-file models"""
     if os.path.isdir(path):
         files = [f for f in os.listdir(path) if f.endswith(".safetensors")]
-        if len(files) == 1:
-            return os.path.join(path, files[0])
+        if len(files) == 1: return os.path.join(path, files[0])
     return path
 
 def hash_model(model_name: str) -> str:
@@ -44,7 +42,6 @@ def get_config_for_model(config_dict, model_id, specific_only=False):
     return None if specific_only else config_dict.get("default")
 
 def patch_toolkit(obj, overrides):
-    """Recursively applies overrides to nested dictionaries (AI-Toolkit)"""
     if isinstance(obj, dict):
         for k, v in obj.items():
             if k in overrides:
@@ -93,7 +90,6 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         with open(tmpl_p, "r") as f: config = yaml.safe_load(f)
         for proc in config.get('config', {}).get('process', []):
             if 'model' in proc:
-                # FIX: Toolkit models (Z-Image/Qwen) ALWAYS need the directory path
                 proc['model']['name_or_path'] = model_path
                 
                 if 'training_folder' in proc:
@@ -101,12 +97,31 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     os.makedirs(out, exist_ok=True)
                     proc['training_folder'] = out
                 
-                # Assistant LoRA Fix
-                if proc['model'].get('assistant_lora_path') and not os.path.exists(proc['model']['assistant_lora_path']):
-                    m_file = get_model_path(model_path)
-                    m_dir = m_file if os.path.isdir(m_file) else os.path.dirname(m_file)
-                    alt = os.path.join(m_dir, os.path.basename(proc['model']['assistant_lora_path']))
-                    if os.path.exists(alt): proc['model']['assistant_lora_path'] = alt
+                # AGGRESSIVE ADAPTER SEARCH (Fix for Z-Image)
+                if proc['model'].get('assistant_lora_path'):
+                    lora_path = proc['model']['assistant_lora_path']
+                    if not os.path.exists(lora_path):
+                        print(f"🔍 [AI-Toolkit] Assistant LoRA not found at {lora_path}. Searching...")
+                        m_file = get_model_path(model_path)
+                        m_dir = m_file if os.path.isdir(m_file) else os.path.dirname(m_file)
+                        
+                        # Try exact name in model dir
+                        alt = os.path.join(m_dir, os.path.basename(lora_path))
+                        if os.path.exists(alt):
+                            proc['model']['assistant_lora_path'] = alt
+                            print(f"✨ Found adapter: {alt}")
+                        else:
+                            # Try any .safetensors in model dir
+                            found = False
+                            for f in os.listdir(m_dir):
+                                if f.endswith(".safetensors") and ("adapter" in f.lower() or "lora" in f.lower()):
+                                    proc['model']['assistant_lora_path'] = os.path.join(m_dir, f)
+                                    print(f"✨ Found alternative adapter: {proc['model']['assistant_lora_path']}")
+                                    found = True
+                                    break
+                            if not found:
+                                print(f"⚠️ [AI-Toolkit] NO ADAPTER FOUND. Removing key to prevent crash.")
+                                proc['model'].pop('assistant_lora_path', None)
         
             if 'datasets' in proc:
                 for ds in proc['datasets']: ds['folder_path'] = train_data_dir
@@ -132,8 +147,6 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     else:
         with open(tmpl_p, "r") as f: config = toml.load(f)
-        
-        # RESTORED: Explicit SDXL Mapping (Safety First)
         sdxl_person_map = {
             "zenless-lab/sdxl-aam-xl-anime-mix": 9, "John6666/nova-anime-xl-pony-v5-sdxl": 9,
             "zenless-lab/sdxl-anima-pencil-xl-v5": 9, "cagliostrolab/animagine-xl-4.0": 9,
@@ -168,7 +181,6 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             arch = archs.get(nid, archs[99])
             config.update({"network_dim": arch["dim"], "network_alpha": arch["alpha"], "network_args": arch["args"]})
 
-        # Hyperparameter Selection
         lrs_fn = "flux.json" if model_type == "flux" else ("style_config.json" if is_style else "person_config.json")
         lrs_p = os.path.join(script_dir, "lrs", lrs_fn)
         lrs_settings = {}
@@ -222,7 +234,7 @@ async def main():
     os.makedirs(train_cst.IMAGE_CONTAINER_IMAGES_PATH, exist_ok=True)
     model_path = train_paths.get_image_base_model_path(args.model, args.model_type)
 
-    print("🛠️ Preparing Dataset...")
+    print("🛠️ Preparing Dataset Environment...")
     prepare_dataset(
         training_images_zip_path=train_paths.get_image_training_zip_save_path(args.task_id),
         training_images_repeat=cst.DIFFUSION_SDXL_REPEATS if args.model_type == "sdxl" else cst.DIFFUSION_FLUX_REPEATS,
