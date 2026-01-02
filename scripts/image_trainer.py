@@ -186,6 +186,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "bghira/terminus-xl-velocity-v2": 118
         }
         
+        lrs_key = "default"
         if model_type == "sdxl":
             nid = sdxl_style_map.get(model_name, 118) if is_style else sdxl_person_map.get(model_name, 99)
             archs = {
@@ -198,6 +199,10 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             }
             arch = archs.get(nid, archs[99])
             config.update({"network_dim": arch["dim"], "network_alpha": arch["alpha"], "network_args": arch["args"]})
+            
+            if nid in [8, 9]: lrs_key = "default_anime"
+            elif nid in [69, 78]: lrs_key = "default_realis"
+            elif nid in [99, 118]: lrs_key = "default_artistic"
 
         lrs_fn = "flux.json" if model_type == "flux" else ("style_config.json" if is_style else "person_config.json")
         lrs_p = os.path.join(script_dir, "lrs", lrs_fn)
@@ -206,7 +211,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             with open(lrs_p, 'r') as f:
                 lib = json.load(f)
                 m_hash = hash_model(model_name)
-                lrs_settings = get_config_for_model(lib, m_hash, True) or get_config_for_model(lib, expected_repo_name, True) or lib.get("default", {})
+                lrs_settings = get_config_for_model(lib, m_hash, True) or get_config_for_model(lib, expected_repo_name, True) or lib.get(lrs_key, {}) or lib.get("default", {})
                 print(f"[LRS Strategy] Applied settings from {lrs_fn}")
 
         steps, bs, _ = calculate_adaptive_steps(train_data_dir, is_style, model_type)
