@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Playground - Mr. Toothless
-Tournament Edition - Final FIXED & STABLE
+Tournament Edition - Final FIXED & STABLE (Clean Version)
 """
 
 import argparse
@@ -79,7 +79,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if (num_images // bs) < 6 and bs > 1: bs = max(1, bs - 1)
         final_steps = max(200, min(int((num_images * exposure) / bs), hard_cap))
         
-        print(f"🚀 [Autopilot] Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps}")
+        print(f"[Autopilot] Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps}")
         return final_steps, bs, num_images
     except: return 1000, 1, 0
 
@@ -103,7 +103,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 if proc['model'].get('assistant_lora_path'):
                     lora_path = proc['model']['assistant_lora_path']
                     if not os.path.exists(lora_path):
-                        print(f"🔍 [AI-Toolkit] Assistant LoRA not found at {lora_path}. Searching...")
+                        print(f"[AI-Toolkit] Assistant LoRA not found at {lora_path}. Searching...")
                         m_file = get_model_path(model_path)
                         m_dir = m_file if os.path.isdir(m_file) else os.path.dirname(m_file)
                         
@@ -111,18 +111,18 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                         alt = os.path.join(m_dir, os.path.basename(lora_path))
                         if os.path.exists(alt):
                             proc['model']['assistant_lora_path'] = alt
-                            print(f"✨ Found adapter: {alt}")
+                            print(f"[AI-Toolkit] Found adapter: {alt}")
                         else:
                             # Try any .safetensors in model dir
                             found = False
                             for f in os.listdir(m_dir):
                                 if f.endswith(".safetensors") and ("adapter" in f.lower() or "lora" in f.lower()):
                                     proc['model']['assistant_lora_path'] = os.path.join(m_dir, f)
-                                    print(f"✨ Found alternative adapter: {proc['model']['assistant_lora_path']}")
+                                    print(f"[AI-Toolkit] Found alternative adapter: {proc['model']['assistant_lora_path']}")
                                     found = True
                                     break
                             if not found:
-                                print(f"⚠️ [AI-Toolkit] NO ADAPTER FOUND. Removing key to prevent crash.")
+                                print(f"[WARNING] [AI-Toolkit] NO ADAPTER FOUND. Removing key to prevent crash.")
                                 proc['model'].pop('assistant_lora_path', None)
         
             if 'datasets' in proc:
@@ -137,7 +137,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 with open(lrs_p, 'r') as f: lrs_lib = json.load(f)
                 match = get_config_for_model(lrs_lib, m_hash, True) or get_config_for_model(lrs_lib, expected_repo_name, True)
                 if match:
-                    print(f"✨ [AI-Toolkit] Applying overrides from {fn}")
+                    print(f"[AI-Toolkit] Applying overrides from {fn}")
                     key_map = {"unet_lr": "lr", "max_train_steps": "steps", "train_batch_size": "batch_size"}
                     final_ovr = {key_map.get(k, k): v for k, v in match.items()}
                     patch_toolkit(config, final_ovr)
@@ -207,7 +207,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 lib = json.load(f)
                 m_hash = hash_model(model_name)
                 lrs_settings = get_config_for_model(lib, m_hash, True) or get_config_for_model(lib, expected_repo_name, True) or lib.get("default", {})
-                print(f"📦 [LRS Strategy] Applied settings from {lrs_fn}")
+                print(f"[LRS Strategy] Applied settings from {lrs_fn}")
 
         steps, bs, _ = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         config.update({
@@ -226,7 +226,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         return save_p
 
 def run_training(model_type, config_path):
-    print(f"🔥 Starting {model_type.upper()} training...")
+    print(f"Starting {model_type.upper()} training...")
     if model_type in ["sdxl", "flux"]:
         script = "flux_train_network.py" if model_type == "flux" else "sdxl_train_network.py"
         cmd = ["accelerate", "launch", "--mixed_precision", "bf16", "--num_cpu_threads_per_process", "2", f"/app/sd-script/{script}", "--config_file", config_path]
@@ -238,7 +238,7 @@ def run_training(model_type, config_path):
         for line in proc.stdout: print(line, end="", flush=True)
         if proc.wait() != 0: raise RuntimeError("Training failed")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[ERROR] {e}")
         raise
 
 async def main():
@@ -252,7 +252,7 @@ async def main():
     os.makedirs(train_cst.IMAGE_CONTAINER_IMAGES_PATH, exist_ok=True)
     model_path = train_paths.get_image_base_model_path(args.model, args.model_type)
 
-    print("🛠️ Preparing Dataset Environment...")
+    print("Preparing Dataset Environment...")
     prepare_dataset(
         training_images_zip_path=train_paths.get_image_training_zip_save_path(args.task_id),
         training_images_repeat=cst.DIFFUSION_SDXL_REPEATS if args.model_type == "sdxl" else cst.DIFFUSION_FLUX_REPEATS,
