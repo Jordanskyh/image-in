@@ -254,7 +254,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
-                "guidance_scale": 3.5
+                "guidance_scale": 85.0
             })
 
         config.update({
