@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Playground - Mr. Toothless
-Tournament Edition - Final FIXED & STABLE (Clean Version)
+De speeltuin van meneer Jordansky
 """
 
 import argparse
@@ -14,7 +13,7 @@ import subprocess
 import sys
 import toml
 
-# Project Path Setup
+# Projectpadinstelling
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)
 sys.path.append(project_root)
@@ -26,7 +25,7 @@ from core.config.config_handler import save_config, save_config_toml
 from core.dataset.prepare_diffusion_dataset import prepare_dataset
 from core.models.utility_models import ImageModelType
 
-# --- HELPERS ---
+# Hulpkrachten
 
 def get_model_path(path: str) -> str:
     """Finds the actual .safetensors file ONLY for single-file models"""
@@ -53,7 +52,7 @@ def patch_toolkit(obj, overrides):
     elif isinstance(obj, list):
         for item in obj: patch_toolkit(item, overrides)
 
-# --- CORE LOGIC ---
+# Kernlogica
 
 def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
     try:
@@ -62,26 +61,35 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            bs = 4 if num_images > 20 else 2
-            if num_images < 15: bs = 1
-            exposure, hard_cap = 120, 1200
-        elif num_images < 15:
-            bs, exposure, hard_cap = 1, 30, 650
-        elif num_images < 50:
-            bs, exposure, hard_cap = 2, 60, 1000
-        else:
-            bs, exposure, hard_cap = 4, 40, 1600
+            if num_images < 15:
+                bs, exposure, hard_cap = 1, 140, 1500
+            elif num_images < 40:
+                bs, exposure, hard_cap = 2, 120, 2500 
+            else:
+                bs, exposure, hard_cap = 4, 100, 3500
+
+        elif model_type == "sdxl" and not is_style:
+            # REVOLVER Verhoogde diepte met beheerde belichting
+            if num_images < 15:
+                bs, exposure, hard_cap = 1, 130, 1600 
+            elif num_images < 40:
+                bs, exposure, hard_cap = 2, 120, 2400
+            else:
+                bs, exposure, hard_cap = 4, 110, 3500
+
+        elif model_type == "sdxl" and is_style:
+            # STYLE: Verhoogde diepte met beheerde belichting
+            if num_images < 15:
+                bs, exposure, hard_cap = 1, 90, 1100 
+            elif num_images < 40:
+                bs, exposure, hard_cap = 2, 85, 1800
+            else:
+                bs, exposure, hard_cap = 4, 80, 2800
             
-        if is_style:
-            exposure = int(exposure * 0.8)
-            hard_cap = int(hard_cap * 0.8)
-            
-        if (num_images // bs) < 6 and bs > 1: bs = max(1, bs - 1)
         final_steps = max(200, min(int((num_images * exposure) / bs), hard_cap))
-        
-        print(f"[Autopilot] Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps}")
+        print(f"[Autopilot V3] Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
         return final_steps, bs, num_images
-    except: return 1000, 1, 0
+    except Exception: return 1000, 1, 0
 
 def create_config(task_id, model_path, model_name, model_type, expected_repo_name, trigger_word=None):
     train_data_dir = train_paths.get_image_training_images_dir(task_id)
@@ -93,13 +101,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         for proc in config.get('config', {}).get('process', []):
             if 'model' in proc:
                 proc['model']['name_or_path'] = model_path
-                
                 if 'training_folder' in proc:
                     out = train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
                     os.makedirs(out, exist_ok=True)
                     proc['training_folder'] = out
                 
-                # AGGRESSIVE ADAPTER SEARCH (Fix for Z-Image)
+                # Agressieve adapter voor Z-afbeelding
                 if proc['model'].get('assistant_lora_path'):
                     lora_path = proc['model']['assistant_lora_path']
                     if not os.path.exists(lora_path):
@@ -107,13 +114,13 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                         m_file = get_model_path(model_path)
                         m_dir = m_file if os.path.isdir(m_file) else os.path.dirname(m_file)
                         
-                        # Try exact name in model dir
+                        # Probeer de exacte naam in de modelmap.
                         alt = os.path.join(m_dir, os.path.basename(lora_path))
                         if os.path.exists(alt):
                             proc['model']['assistant_lora_path'] = alt
                             print(f"[AI-Toolkit] Found adapter: {alt}")
                         else:
-                            # Try any .safetensors in model dir
+                            # Probeer elke .safetensors in de modelmap.
                             found = False
                             for f in os.listdir(m_dir):
                                 if f.endswith(".safetensors") and ("adapter" in f.lower() or "lora" in f.lower()):
@@ -149,15 +156,19 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     else:
         with open(tmpl_p, "r") as f: config = toml.load(f)
+        
         sdxl_person_map = {
+            # (NID 9)
             "zenless-lab/sdxl-aam-xl-anime-mix": 9, "John6666/nova-anime-xl-pony-v5-sdxl": 9,
             "zenless-lab/sdxl-anima-pencil-xl-v5": 9, "cagliostrolab/animagine-xl-4.0": 9,
             "zenless-lab/sdxl-anything-xl": 9, "OnomaAIResearch/Illustrious-xl-early-release-v0": 9,
             "John6666/hassaku-xl-illustrious-v10style-sdxl": 9, "KBlueLeaf/Kohaku-XL-Zeta": 9,
             "zenless-lab/sdxl-blue-pencil-xl-v7": 9, 
+            # (NID 69)
             "misri/leosamsHelloworldXL_helloworldXL70": 69, "GraydientPlatformAPI/albedobase2-xl": 69, 
             "femboysLover/RealisticStockPhoto-fp16": 69, "ifmain/UltraReal_Fine-Tune": 69, 
             "GraydientPlatformAPI/realism-engine2-xl": 69, "SG161222/RealVisXL_V4.0": 69,
+            # (NID 99)
             "dataautogpt3/CALAMITY": 99, "recoilme/colorfulxl": 99, "dataautogpt3/ProteusV0.5": 99,
             "fluently/Fluently-XL-Final": 99, "stabilityai/stable-diffusion-xl-base-1.0": 99,
             "openart-custom/DynaVisionXL": 99, "Lykon/dreamshaper-xl-1-0": 99, "dataautogpt3/ProteusSigma": 99,
@@ -167,15 +178,19 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "stablediffusionapi/protovision-xl-v6.6": 99, "dataautogpt3/TempestV0.1": 99,
             "bghira/terminus-xl-velocity-v2": 99
         }
+
         sdxl_style_map = {
+            # (NID 8)
             "zenless-lab/sdxl-aam-xl-anime-mix": 8, "John6666/nova-anime-xl-pony-v5-sdxl": 8,
             "zenless-lab/sdxl-anima-pencil-xl-v5": 8, "cagliostrolab/animagine-xl-4.0": 8,
             "zenless-lab/sdxl-anything-xl": 8, "OnomaAIResearch/Illustrious-xl-early-release-v0": 8,
             "John6666/hassaku-xl-illustrious-v10style-sdxl": 8, "KBlueLeaf/Kohaku-XL-Zeta": 8,
             "zenless-lab/sdxl-blue-pencil-xl-v7": 8, 
+            # (NID 78)
             "misri/leosamsHelloworldXL_helloworldXL70": 78, "GraydientPlatformAPI/albedobase2-xl": 78, 
             "femboysLover/RealisticStockPhoto-fp16": 78, "ifmain/UltraReal_Fine-Tune": 78, 
             "GraydientPlatformAPI/realism-engine2-xl": 78, "SG161222/RealVisXL_V4.0": 78,
+            # (NID 118)
             "dataautogpt3/CALAMITY": 118, "recoilme/colorfulxl": 118, "dataautogpt3/ProteusV0.5": 118,
             "fluently/Fluently-XL-Final": 118, "stabilityai/stable-diffusion-xl-base-1.0": 118,
             "openart-custom/DynaVisionXL": 118, "Lykon/dreamshaper-xl-1-0": 118, "dataautogpt3/ProteusSigma": 118,
@@ -188,23 +203,27 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         
         lrs_key = "default"
         if model_type == "sdxl":
-            nid = sdxl_style_map.get(model_name, 118) if is_style else sdxl_person_map.get(model_name, 99)
+            nid = sdxl_person_map.get(model_name, 99) if not is_style else sdxl_style_map.get(model_name, 118)
+            
             archs = {
-                8:  {"dim": 128, "alpha": 32, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
-                9:  {"dim": 128, "alpha": 64, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
-                69: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
-                78: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
-                99: {"dim": 64,  "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
-                118: {"dim": 64, "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]}
+                # Persoonsarchitecturen
+                9:   {"dim": 128, "alpha": 64, "args": ["conv_dim=16", "conv_alpha=16", "dropout=null"]},
+                69:  {"dim": 96,  "alpha": 48, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
+                99:  {"dim": 96,  "alpha": 48, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
+                # Stijlarchitecturen
+                8:   {"dim": 64, "alpha": 32, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
+                78:  {"dim": 48, "alpha": 24, "args": ["conv_dim=4", "conv_alpha=2", "dropout=null"]},
+                118: {"dim": 48, "alpha": 24, "args": ["conv_dim=4", "conv_alpha=2", "dropout=null"]}
             }
             arch = archs.get(nid, archs[99])
             config.update({"network_dim": arch["dim"], "network_alpha": arch["alpha"], "network_args": arch["args"]})
             
-            if nid in [8, 9]: lrs_key = "default_anime"
+            # Toewijzing van LRS
+            if nid in [9, 8]: lrs_key = "default_anime"
             elif nid in [69, 78]: lrs_key = "default_realis"
             elif nid in [99, 118]: lrs_key = "default_artistic"
 
-        lrs_fn = "flux.json" if model_type == "flux" else ("style_config.json" if is_style else "person_config.json")
+        lrs_fn = "flux.json" if model_type == "flux" else ("person_config.json" if not is_style else "style_config.json")
         lrs_p = os.path.join(script_dir, "lrs", lrs_fn)
         lrs_settings = {}
         if os.path.exists(lrs_p):
@@ -212,9 +231,31 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 lib = json.load(f)
                 m_hash = hash_model(model_name)
                 lrs_settings = get_config_for_model(lib, m_hash, True) or get_config_for_model(lib, expected_repo_name, True) or lib.get(lrs_key, {}) or lib.get("default", {})
-                print(f"[LRS Strategy] Applied settings from {lrs_fn}")
 
-        steps, bs, _ = calculate_adaptive_steps(train_data_dir, is_style, model_type)
+        steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
+        
+        # Kalibratie van SDXL
+        if model_type == "sdxl":
+            config["min_snr_gamma"] = 5 if not is_style else 7
+            # Dynamische verhoging van d_coef in Prodigy voor kleine datasets.
+            if num_images < 15 and lrs_settings.get("optimizer_type") == "prodigy":
+                new_args = []
+                for arg in lrs_settings.get("optimizer_args", []):
+                    if "d_coef" in arg:
+                        val = float(arg.split("=")[1])
+                        new_args.append(f"d_coef={val * 1.1}")
+                    else: new_args.append(arg)
+                lrs_settings["optimizer_args"] = new_args
+        
+        # Injectie van flux
+        if model_type == "flux":
+            config.update({
+                "discrete_flow_shift": 3.1582,
+                "model_prediction_type": "raw",
+                "timestep_sampling": "sigmoid",
+                "guidance_scale": 85.0
+            })
+
         config.update({
             "max_train_steps": lrs_settings.get("max_train_steps", steps),
             "train_batch_size": lrs_settings.get("train_batch_size", bs),

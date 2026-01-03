@@ -3,7 +3,7 @@
         "optimizer_type": "prodigy",
         "optimizer_args": [
             "decouple=True",
-            "d_coef=1",
+            "d_coef=0.8",
             "weight_decay=0.01",
             "use_bias_correction=True",
             "safeguard_warmup=True"
@@ -12,13 +12,13 @@
         "text_encoder_lr": 1.0,
         "lr_scheduler": "constant",
         "lr_warmup_steps": 0,
-        "caption_dropout_rate": 0
+        "caption_dropout_rate": 0.05
     },
     "default_realis": {
         "optimizer_type": "prodigy",
         "optimizer_args": [
             "decouple=True",
-            "d_coef=1",
+            "d_coef=0.8",
             "weight_decay=0.01",
             "use_bias_correction=True",
             "safeguard_warmup=True"
@@ -27,13 +27,13 @@
         "text_encoder_lr": 1.0,
         "lr_scheduler": "constant",
         "lr_warmup_steps": 0,
-        "caption_dropout_rate": 0
+        "caption_dropout_rate": 0.05
     },
     "default_artistic": {
         "optimizer_type": "prodigy",
         "optimizer_args": [
             "decouple=True",
-            "d_coef=1",
+            "d_coef=0.8",
             "weight_decay=0.01",
             "use_bias_correction=True",
             "safeguard_warmup=True"
@@ -42,7 +42,7 @@
         "text_encoder_lr": 1.0,
         "lr_scheduler": "constant",
         "lr_warmup_steps": 0,
-        "caption_dropout_rate": 0
+        "caption_dropout_rate": 0.05
     },
     "data": {}
 }

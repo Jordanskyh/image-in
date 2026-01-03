@@ -1,4 +1,5 @@
-# --- HARDWARE & IO ---
+# THE INFRASTRUCTURE BLUEPRINT
+# HARDWARE & IO
 mixed_precision = "bf16"
 save_precision = "bf16"
 gradient_checkpointing = true
@@ -10,7 +11,7 @@ save_model_as = "safetensors"
 no_metadata = true
 async_upload = true
 
-# --- BUCKET & DATA ---
+# BUCKET & DATA
 enable_bucket = true
 min_bucket_reso = 256
 max_bucket_reso = 2048
@@ -22,14 +23,14 @@ caption_extension = ".txt"
 max_token_length = 75
 max_data_loader_n_workers = 2
 
-# --- NETWORK BASE ---
+# NETWORK BASE
 network_module = "networks.lora"
 loss_type = "l2"
 prior_loss_weight = 1.0
 min_snr_gamma = 5
 scale_weight_norms = 5
 
-# --- MISC ---
+# MISC
 max_timestep = 1000
 seed = 2951032222
 low_vram = false
