@@ -62,7 +62,8 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
 
         if model_type == "flux":
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 140, 1500
+                # Menyesuaikan agar masuk target 1 jam (Total ~500 steps)
+                bs, exposure, hard_cap = 1, 55, 1000
             elif num_images < 40:
                 bs, exposure, hard_cap = 2, 120, 2500 
             else:
@@ -253,7 +254,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
-                "guidance_scale": 85.0
+                "guidance_scale": 3.5
             })
 
         config.update({
