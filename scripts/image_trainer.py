@@ -61,13 +61,13 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
+            # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                # Menyesuaikan agar masuk target 1 jam (Total ~500 steps)
-                bs, exposure, hard_cap = 1, 55, 1000
+                bs, exposure, hard_cap = 1, 100, 1100
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 120, 2500 
+                bs, exposure, hard_cap = 2, 60, 1500 
             else:
-                bs, exposure, hard_cap = 4, 100, 3500
+                bs, exposure, hard_cap = 4, 60, 2500
 
         elif model_type == "sdxl" and not is_style:
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -254,7 +254,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
-                "guidance_scale": 85.0
+                "guidance_scale": 90.0
             })
 
         config.update({
