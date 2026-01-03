@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-De speeltuin van meneer Jordansky
+De infrastructuurblauwdruk van meneer Jordansky
 """
 
 import argparse

@@ -1,4 +1,5 @@
-# THE INFRASTRUCTURE BLUEPRINT
+# De infrastructuurblauwdruk van meneer Jordansky
+
 # HARDWARE & IO
 mixed_precision = "bf16"
 save_precision = "bf16"
