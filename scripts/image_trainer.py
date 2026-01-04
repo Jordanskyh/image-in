@@ -46,7 +46,7 @@ def patch_toolkit(obj, overrides):
         for k, v in obj.items():
             if k in overrides:
                 obj[k] = overrides[k]
-                print(f"   -> [PATCH] {k}: {overrides[k]}")
+                print(f"het speelveld van Jordansky-[PATCH] {k}: {overrides[k]}")
             patch_toolkit(v, overrides)
     elif isinstance(obj, list):
         for item in obj: patch_toolkit(item, overrides)
@@ -70,20 +70,20 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 140, 2000
+                bs, exposure, hard_cap = 1, 135, 1800
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 100, 2800
+                bs, exposure, hard_cap = 2, 120, 2200
             else:
-                bs, exposure, hard_cap = 4, 85, 3800
+                bs, exposure, hard_cap = 4, 100, 3500
 
         elif model_type == "z-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 85, 1200
+                bs, exposure, hard_cap = 1, 150, 2000
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 80, 2000
+                bs, exposure, hard_cap = 2, 140, 2500
             else:
-                bs, exposure, hard_cap = 4, 75, 3000
+                bs, exposure, hard_cap = 4, 120, 3000
 
         elif model_type == "sdxl" and not is_style:
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -104,7 +104,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
                 bs, exposure, hard_cap = 4, 80, 2800
             
         final_steps = max(200, min(int((num_images * exposure) / bs), hard_cap))
-        print(f"In de lucht met Jordanksy Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
+        print(f"het speelveld van Jordansky-Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
         return final_steps, bs, num_images
     except Exception: return 1000, 1, 0
 
@@ -115,7 +115,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     if is_toolkit:
         with open(tmpl_p, "r") as f: config = yaml.safe_load(f)
-        # V5 Sovereign Configuration
+        # Sovereign Configuration
         steps, bs, n_imgs = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
         for proc in config.get('config', {}).get('process', []):
@@ -128,21 +128,35 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 if n_imgs < 15:
                     orig_lr = proc['train'].get('lr', 1e-4)
                     proc['train']['lr'] = orig_lr * 1.1 # 10% Aggressiveness boost
-                    print(f"   -> [BOOSTER] Applied 1.1x LR multiplier for small dataset")
+                    print(f"het speelveld van Jordansky-Booster: LR ditingkatkan naar {proc['train']['lr']}")
+                
+                # Optimalisatie van intervallen
+                if model_type == "qwen-image":
+                    # Reusachtige LoRA Qwen
+                    proc['train']['save_every'] = 450 if steps > 900 else 300
+                else:
+                    # Kleinere Z-Image
+                    proc['train']['save_every'] = 500 if steps > 1200 else 250
+                    
+                print(f"het speelveld van Jordansky-Math Sync: Steps={steps}, SaveEvery={proc['train']['save_every']}")
 
             # 2. Architecturale & Kwantisatie-optimalisatie
             if 'model' in proc:
                 proc['model']['name_or_path'] = model_path
-                if model_type == "qwen-image":
-                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
                 
+                # Lokale pad-instellingen (Cruciaal voor opslag)
                 if 'training_folder' in proc:
                     out = train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
                     os.makedirs(out, exist_ok=True)
                     proc['training_folder'] = out
+
+                if model_type == "qwen-image":
+                    # Qwen: Gebruik qfloat8 voor precisie (Champion gebruikt uint3)
+                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
                 
-                # Z-Image-adapter en ondersteuning voor convoluties
                 if model_type == "z-image":
+                    # Z-Image: Paksa qfloat8 en High-Rank LoRA
+                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
                     if 'network' in proc:
                         proc['network'].update({'linear': 128, 'linear_alpha': 128, 'conv': 32, 'conv_alpha': 32})
 
@@ -341,7 +355,7 @@ async def main():
     os.makedirs(train_cst.IMAGE_CONTAINER_IMAGES_PATH, exist_ok=True)
     model_path = train_paths.get_image_base_model_path(args.model, args.model_type)
 
-    print("Preparing Dataset Environment...")
+    print("het speelveld van JordanskyPreparing Dataset Env")
     prepare_dataset(
         training_images_zip_path=train_paths.get_image_training_zip_save_path(args.task_id),
         training_images_repeat=cst.DIFFUSION_SDXL_REPEATS if args.model_type == "sdxl" else cst.DIFFUSION_FLUX_REPEATS,
