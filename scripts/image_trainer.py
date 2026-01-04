@@ -26,7 +26,6 @@ from core.dataset.prepare_diffusion_dataset import prepare_dataset
 from core.models.utility_models import ImageModelType
 
 # Hulpkrachten
-
 def get_model_path(path: str) -> str:
     """Finds the actual .safetensors file ONLY for single-file models"""
     if os.path.isdir(path):
@@ -53,7 +52,6 @@ def patch_toolkit(obj, overrides):
         for item in obj: patch_toolkit(item, overrides)
 
 # Kernlogica
-
 def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
     try:
         exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
@@ -63,11 +61,29 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if model_type == "flux":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 100, 1100
+                bs, exposure, hard_cap = 1, 72, 1100
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 60, 1500 
+                bs, exposure, hard_cap = 2, 65, 1500 
             else:
                 bs, exposure, hard_cap = 4, 60, 2500
+
+        elif model_type == "qwen-image":
+            # REVOLVER Verhoogde diepte met beheerde belichting
+            if num_images < 15:
+                bs, exposure, hard_cap = 1, 140, 2000
+            elif num_images < 40:
+                bs, exposure, hard_cap = 2, 100, 2800
+            else:
+                bs, exposure, hard_cap = 4, 85, 3800
+
+        elif model_type == "z-image":
+            # REVOLVER Verhoogde diepte met beheerde belichting
+            if num_images < 15:
+                bs, exposure, hard_cap = 1, 85, 1200
+            elif num_images < 40:
+                bs, exposure, hard_cap = 2, 80, 2000
+            else:
+                bs, exposure, hard_cap = 4, 75, 3000
 
         elif model_type == "sdxl" and not is_style:
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -88,7 +104,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
                 bs, exposure, hard_cap = 4, 80, 2800
             
         final_steps = max(200, min(int((num_images * exposure) / bs), hard_cap))
-        print(f"[Autopilot V3] Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
+        print(f"In de lucht met Jordanksy Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
         return final_steps, bs, num_images
     except Exception: return 1000, 1, 0
 
@@ -99,29 +115,49 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     if is_toolkit:
         with open(tmpl_p, "r") as f: config = yaml.safe_load(f)
+        # V5 Sovereign Configuration
+        steps, bs, n_imgs = calculate_adaptive_steps(train_data_dir, is_style, model_type)
+        
         for proc in config.get('config', {}).get('process', []):
+            # 1. Schalen & Batchverwerking
+            if 'train' in proc:
+                proc['train']['steps'] = steps
+                proc['train']['batch_size'] = bs
+                
+                # Dynamische LR-Booster (Precisie voor kleine datasets)
+                if n_imgs < 15:
+                    orig_lr = proc['train'].get('lr', 1e-4)
+                    proc['train']['lr'] = orig_lr * 1.1 # 10% Aggressiveness boost
+                    print(f"   -> [BOOSTER] Applied 1.1x LR multiplier for small dataset")
+
+            # 2. Architecturale & Kwantisatie-optimalisatie
             if 'model' in proc:
                 proc['model']['name_or_path'] = model_path
+                if model_type == "qwen-image":
+                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
+                
                 if 'training_folder' in proc:
                     out = train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
                     os.makedirs(out, exist_ok=True)
                     proc['training_folder'] = out
                 
-                # Agressieve adapter voor Z-afbeelding
+                # Z-Image-adapter en ondersteuning voor convoluties
+                if model_type == "z-image":
+                    if 'network' in proc:
+                        proc['network'].update({'linear': 128, 'linear_alpha': 128, 'conv': 32, 'conv_alpha': 32})
+
+                # Zoeklogica voor Z-Image-adapter
                 if proc['model'].get('assistant_lora_path'):
                     lora_path = proc['model']['assistant_lora_path']
                     if not os.path.exists(lora_path):
                         print(f"[AI-Toolkit] Assistant LoRA not found at {lora_path}. Searching...")
                         m_file = get_model_path(model_path)
                         m_dir = m_file if os.path.isdir(m_file) else os.path.dirname(m_file)
-                        
-                        # Probeer de exacte naam in de modelmap.
                         alt = os.path.join(m_dir, os.path.basename(lora_path))
                         if os.path.exists(alt):
                             proc['model']['assistant_lora_path'] = alt
                             print(f"[AI-Toolkit] Found adapter: {alt}")
                         else:
-                            # Probeer elke .safetensors in de modelmap.
                             found = False
                             for f in os.listdir(m_dir):
                                 if f.endswith(".safetensors") and ("adapter" in f.lower() or "lora" in f.lower()):
@@ -132,12 +168,13 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                             if not found:
                                 print(f"[WARNING] [AI-Toolkit] NO ADAPTER FOUND. Removing key to prevent crash.")
                                 proc['model'].pop('assistant_lora_path', None)
-        
+
             if 'datasets' in proc:
                 for ds in proc['datasets']: ds['folder_path'] = train_data_dir
             if trigger_word: proc['trigger_word'] = trigger_word
 
         m_hash = hash_model(model_name)
+        #de rest van de JSON-override-logica
         cfg_dir = os.path.join(script_dir, "lrs")
         for fn in ["flux.json", "person_config.json", "style_config.json"]:
             lrs_p = os.path.join(cfg_dir, fn)
@@ -149,7 +186,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     key_map = {"unet_lr": "lr", "max_train_steps": "steps", "train_batch_size": "batch_size"}
                     final_ovr = {key_map.get(k, k): v for k, v in match.items()}
                     patch_toolkit(config, final_ovr)
-                    break
+                    break 
         
         save_p = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.yaml")
         save_config(config, save_p)
@@ -201,7 +238,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "stablediffusionapi/protovision-xl-v6.6": 118, "dataautogpt3/TempestV0.1": 118,
             "bghira/terminus-xl-velocity-v2": 118
         }
-        
+
         lrs_key = "default"
         if model_type == "sdxl":
             nid = sdxl_person_map.get(model_name, 99) if not is_style else sdxl_style_map.get(model_name, 118)
@@ -235,18 +272,23 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
         steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
-        # Kalibratie van SDXL
-        if model_type == "sdxl":
-            config["min_snr_gamma"] = 5 if not is_style else 7
-            # Dynamische verhoging van d_coef in Prodigy voor kleine datasets.
-            if num_images < 15 and lrs_settings.get("optimizer_type") == "prodigy":
-                new_args = []
-                for arg in lrs_settings.get("optimizer_args", []):
-                    if "d_coef" in arg:
-                        val = float(arg.split("=")[1])
-                        new_args.append(f"d_coef={val * 1.1}")
-                    else: new_args.append(arg)
-                lrs_settings["optimizer_args"] = new_args
+        # Kalibratie van SDXL & Flux
+        if model_type in ["sdxl", "flux"]:
+            if model_type == "sdxl":
+                config["min_snr_gamma"] = 5 if not is_style else 7
+            # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
+            if lrs_settings.get("optimizer_type") == "prodigy":
+                # Adaptieve versterker (vermenigvuldiger)
+                multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
+                
+                if multiplier > 1.0:
+                    new_args = []
+                    for arg in lrs_settings.get("optimizer_args", []):
+                        if "d_coef" in arg:
+                            val = float(arg.split("=")[1])
+                            new_args.append(f"d_coef={val * multiplier}")
+                        else: new_args.append(arg)
+                    lrs_settings["optimizer_args"] = new_args
         
         # Injectie van flux
         if model_type == "flux":
@@ -254,7 +296,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
-                "guidance_scale": 90.0
+                "guidance_scale": 85.0
             })
 
         config.update({
