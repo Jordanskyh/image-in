@@ -329,7 +329,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         config.update({
             "max_train_steps": lrs_settings.get("max_train_steps", steps),
             "train_batch_size": lrs_settings.get("train_batch_size", bs),
-            "pretrained_model_name_or_path": model_path if model_type == "flux" else get_model_path(model_path),
+            "pretrained_model_name_or_path": get_model_path(model_path),
             "train_data_dir": train_data_dir,
             "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name),
             # Sovereign Anti-Disk-Full voor SDXL/Flux
