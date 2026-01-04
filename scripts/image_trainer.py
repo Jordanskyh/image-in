@@ -127,19 +127,25 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 # Dynamische LR-Booster (Precisie voor kleine datasets)
                 if n_imgs < 15:
                     orig_lr = proc['train'].get('lr', 1e-4)
-                    proc['train']['lr'] = orig_lr * 1.1 # 10% Aggressiveness boost
+                    proc['train']['lr'] = orig_lr * 1.1 
                     print(f"het speelveld van Jordansky-Booster: LR ditingkatkan naar {proc['train']['lr']}")
                 
                 # Optimalisatie van opslagintervallen
                 if model_type == "qwen-image":
                     # Reusachtige LoRA Qwen
                     proc['train']['save_every'] = 450 if steps > 900 else 300
+                    if 'save' in proc:
+                        proc['save']['max_step_saves_to_keep'] = 1 
                 elif model_type == "z-image":
-                    # Z-Image lebih ringan
+                    # Reusachtige LoRA 
                     proc['train']['save_every'] = 500 if steps > 1200 else 250
+                    if 'save' in proc:
+                        proc['save']['max_step_saves_to_keep'] = 2
                 else:
-                    # Flux/SDXL Default
+                    # Reusachtige LoRA SDXL/FLUX
                     proc['train']['save_every'] = 500 if steps > 1000 else 250
+                    if 'save' in proc:
+                        proc['save']['max_step_saves_to_keep'] = 2
                     
                 print(f"het speelveld van Jordansky-Math Sync: Steps={steps}, SaveEvery={proc['train']['save_every']}")
 
