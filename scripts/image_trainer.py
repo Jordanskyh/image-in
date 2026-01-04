@@ -130,13 +130,16 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                     proc['train']['lr'] = orig_lr * 1.1 # 10% Aggressiveness boost
                     print(f"het speelveld van Jordansky-Booster: LR ditingkatkan naar {proc['train']['lr']}")
                 
-                # Optimalisatie van intervallen
+                # Optimalisatie van opslagintervallen
                 if model_type == "qwen-image":
                     # Reusachtige LoRA Qwen
                     proc['train']['save_every'] = 450 if steps > 900 else 300
-                else:
-                    # Kleinere Z-Image
+                elif model_type == "z-image":
+                    # Z-Image lebih ringan
                     proc['train']['save_every'] = 500 if steps > 1200 else 250
+                else:
+                    # Flux/SDXL Default
+                    proc['train']['save_every'] = 500 if steps > 1000 else 250
                     
                 print(f"het speelveld van Jordansky-Math Sync: Steps={steps}, SaveEvery={proc['train']['save_every']}")
 
