@@ -61,11 +61,11 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if model_type == "flux":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 72, 1100
+                bs, exposure, hard_cap = 1, 32, 1000
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 65, 1500 
+                bs, exposure, hard_cap = 2, 30, 2000
             else:
-                bs, exposure, hard_cap = 4, 60, 2500
+                bs, exposure, hard_cap = 4, 25, 3500
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -301,8 +301,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 config["min_snr_gamma"] = 5 if not is_style else 7
             # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
             if lrs_settings.get("optimizer_type") == "prodigy":
-                # Adaptieve versterker (vermenigvuldiger)
-                multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
+                # Adaptieve versterker (Goldilocks: 1.05x voor stabilitas)
+                multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.0
+                
+                # Tambahan Visual Wow: Noise Offset dinamis
+                if "noise_offset" not in lrs_settings:
+                    lrs_settings["noise_offset"] = 0.03
                 
                 if multiplier > 1.0:
                     new_args = []
@@ -327,7 +331,10 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
             "train_batch_size": lrs_settings.get("train_batch_size", bs),
             "pretrained_model_name_or_path": model_path if model_type == "flux" else get_model_path(model_path),
             "train_data_dir": train_data_dir,
-            "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
+            "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name),
+            # Sovereign Anti-Disk-Full voor SDXL/Flux
+            "save_every_n_steps": 250 if steps > 1000 else 150,
+            "max_number_of_steps_to_save": 2
         })
         config.pop("max_train_epochs", None)
         for k, v in lrs_settings.items():
