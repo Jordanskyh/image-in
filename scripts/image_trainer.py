@@ -61,11 +61,11 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if model_type == "flux":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 32, 1000
+                bs, exposure, hard_cap = 1, 35, 1200
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 30, 2000
+                bs, exposure, hard_cap = 2, 33, 2000
             else:
-                bs, exposure, hard_cap = 4, 25, 3500
+                bs, exposure, hard_cap = 4, 28, 3500
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -301,12 +301,10 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 config["min_snr_gamma"] = 5 if not is_style else 7
             # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
             if lrs_settings.get("optimizer_type") == "prodigy":
-                # Adaptieve versterker (Goldilocks: 1.05x voor stabilitas)
-                multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.0
+                multiplier = 1.08 if num_images < 15 else 1.05 if num_images < 40 else 1.0
                 
-                # Tambahan Visual Wow: Noise Offset dinamis
                 if "noise_offset" not in lrs_settings:
-                    lrs_settings["noise_offset"] = 0.03
+                    lrs_settings["noise_offset"] = 0.035
                 
                 if multiplier > 1.0:
                     new_args = []
