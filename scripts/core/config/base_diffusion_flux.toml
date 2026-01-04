@@ -15,7 +15,6 @@ dynamo_backend = "no"
 full_bf16 = true                                                                                                                                                               
 gradient_accumulation_steps = 1
 gradient_checkpointing = true                                                                                                                                                  
-guidance_scale = 3.5                                                                                                                                                           
 highvram = true                                                                                                                                                                
 huber_c = 0.1                                                                                                                                                                  
 huber_scale = 1                                                                                                                                                                
@@ -38,13 +37,11 @@ mem_eff_save = true
 min_bucket_reso = 256                                                                                                                                                          
 mixed_precision = "bf16"                                                                                                                                                       
 model_prediction_type = "raw"                                                                                                                                                  
-# network_alpha = 64
-# network_args = [ "train_double_block_indices=all", "train_single_block_indices=all", "train_t5xxl=True",]                                                                      
-# network_dim = 128                                                                                                                                                              
+network_alpha = 128
+network_args = [ "train_double_block_indices=all", "train_single_block_indices=all", "train_t5xxl=True",]                                                                      
+network_dim = 128                                                                                                                                                              
 network_module = "networks.lora_flux"                                                                                                                                          
-noise_offset_type = "Original"                                                                                                                                                 
-optimizer_args = ["decouple=True", "d_coef=1", "weight_decay=0.01", "use_bias_correction=True", "safeguard_warmup=True"]                                                                  
-optimizer_type = "prodigy"                                                                                                                                                   
+noise_offset_type = "Multires"                                                                                                                                                 
 output_dir = "/app/outputs"                                                                                                                                          
 output_name = "last"                                                                                                                                                 
 pretrained_model_name_or_path = "/app/flux/unet.safetensors"                                                                                                                  
@@ -61,7 +58,7 @@ t5xxl_max_token_length = 512
 # Removed: text_encoder_lr (managed by LRS)                                                                                                                                               
 timestep_sampling = "sigmoid"                                                                                                                                                  
 train_batch_size = 1
-noise_offset = 0.02                                                                                                                                                           
+# noise_offset removed to be managed by dynamic script
 train_data_dir = ""                                                                                                                               
 # Removed: unet_lr (managed by LRS)                                                                                                                                                                 
 vae_batch_size = 1                                                                                                                                                             

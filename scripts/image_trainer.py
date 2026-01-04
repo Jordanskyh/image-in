@@ -61,14 +61,12 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if model_type == "flux":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                # V6.1 Golden Balance: Avoiding the Overfit Trap
-                bs, exposure, hard_cap = 1, 33, 1100
+                # V6.2 Precise Save Fix + High Contrast Depth
+                bs, exposure, hard_cap = 1, 35, 1300
             elif num_images < 40:
-                # Sovereign Edge for Medium Datasets
-                bs, exposure, hard_cap = 2, 30, 2000
+                bs, exposure, hard_cap = 2, 33, 2200
             else:
-                # Sovereign Edge for Large Datasets
-                bs, exposure, hard_cap = 4, 28, 3500
+                bs, exposure, hard_cap = 4, 30, 4000
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
