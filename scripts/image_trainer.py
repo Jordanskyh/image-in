@@ -62,14 +62,14 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             # Sovereign V6.3: Fixed Step Tiering for Lion Optimizer
             # Logic: Use super high exposure to force 'hard_cap' as the fixed step count.
             if num_images < 15:
-                # Target: 200 Steps (Micro)
-                bs, exposure, hard_cap = 1, 1000, 200 
+                # Target: 250 Steps (Micro - Match Champion)
+                bs, exposure, hard_cap = 1, 1000, 250 
             elif num_images < 40:
-                # Target: 350 Steps (Medium)
-                bs, exposure, hard_cap = 2, 1000, 350
+                # Target: 400 Steps (Medium - Compensation for No T5)
+                bs, exposure, hard_cap = 2, 1000, 400
             else:
-                # Target: 500 Steps (Large)
-                bs, exposure, hard_cap = 4, 1000, 500
+                # Target: 600 Steps (Large)
+                bs, exposure, hard_cap = 4, 1000, 600
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
