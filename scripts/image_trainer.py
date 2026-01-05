@@ -318,7 +318,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
                 "guidance_scale": 85.0,
-                "caption_dropout_rate": 0.15
+                "caption_dropout_rate": 0.05
             })
 
         config.update({
