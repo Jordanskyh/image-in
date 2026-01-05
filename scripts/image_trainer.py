@@ -62,7 +62,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             # Sovereign V6.3: Fixed Step Tiering for Lion Optimizer
             # Logic: Use super high exposure to force 'hard_cap' as the fixed step count.
             if num_images < 15:
-                # Target: 120 Steps @ BS 4 + Accum 2 (V9.0: Masterclass 106-Epoch)
+                # Target: 120 Steps @ BS 4 + Accum 2 (V9.1: The 106-Epoch Precise Strike)
                 bs, exposure, hard_cap = 4, 1000, 120 
             elif num_images < 40:
                 # Target: 300 Steps @ BS 4 (Medium)
@@ -107,7 +107,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             else:
                 bs, exposure, hard_cap = 4, 80, 2800
             
-        final_steps = max(200, min(int((num_images * exposure) / bs), hard_cap))
+        final_steps = max(50, min(int((num_images * exposure) / bs), hard_cap))
         print(f"het speelveld van Jordansky-Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
         return final_steps, bs, num_images
     except Exception: return 1000, 1, 0
