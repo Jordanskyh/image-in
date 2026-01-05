@@ -59,14 +59,17 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            # REVOLVER Verhoogde diepte met beheerde belichting
+            # Sovereign V6.3: Fixed Step Tiering for Lion Optimizer
+            # Logic: Use super high exposure to force 'hard_cap' as the fixed step count.
             if num_images < 15:
-                # V6.2 Precise Save Fix + High Contrast Depth
-                bs, exposure, hard_cap = 1, 35, 1300
+                # Target: 200 Steps (Micro)
+                bs, exposure, hard_cap = 1, 1000, 200 
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 33, 2200
+                # Target: 350 Steps (Medium)
+                bs, exposure, hard_cap = 2, 1000, 350
             else:
-                bs, exposure, hard_cap = 4, 30, 4000
+                # Target: 500 Steps (Large)
+                bs, exposure, hard_cap = 4, 1000, 500
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -297,27 +300,18 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
         # Kalibratie van SDXL & Flux
-        if model_type in ["sdxl", "flux"]:
-            if model_type == "sdxl":
-                config["min_snr_gamma"] = 5 if not is_style else 7
-            # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
-            if lrs_settings.get("optimizer_type") == "prodigy":
-                # V6.1: Moderate Boost for deeper generalization
-                multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.02
+        # Sovereign V6.3: Lion Injector Logic
+        # We removed Prodigy dynamic multipliers because Lion uses fixed scheduling.
+        if model_type == "flux":
+            # Force Lion defaults if not present (Safety Net)
+            if "optimizer_type" not in lrs_settings:
+                lrs_settings["optimizer_type"] = "Lion"
+                lrs_settings["optimizer_args"] = ["weight_decay=0.005", "betas=(0.9,0.99)"]
                 
-                if "noise_offset" not in lrs_settings:
-                    lrs_settings["noise_offset"] = 0.035 if num_images < 15 else 0.035 if num_images < 40 else 0.03
-                
-                if multiplier > 1.0:
-                    new_args = []
-                    for arg in lrs_settings.get("optimizer_args", []):
-                        if "d_coef" in arg:
-                            val = float(arg.split("=")[1])
-                            new_args.append(f"d_coef={val * multiplier}")
-                        else: new_args.append(arg)
-                    lrs_settings["optimizer_args"] = new_args
-        
-        # Injectie van flux
+            # Force Noise Offset Logic (V6.3)
+            if "noise_offset" not in lrs_settings:
+                # Logic: 0.035 for Micro/Medium, 0.03 for Large
+                lrs_settings["noise_offset"] = 0.035 if num_images < 40 else 0.03
         if model_type == "flux":
             config.update({
                 "discrete_flow_shift": 3.1582,
