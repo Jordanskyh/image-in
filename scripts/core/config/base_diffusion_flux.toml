@@ -14,6 +14,7 @@ dynamo_backend = "no"
 # epoch = 100                                                                                                                                                                    
 full_bf16 = true                                                                                                                                                               
 gradient_accumulation_steps = 1
+gradient_checkpointing = true
 guidance_scale = 85.0
 highvram = true                                                                                                                                                                
 huber_c = 0.1                                                                                                                                                                  

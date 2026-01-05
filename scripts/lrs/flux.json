@@ -1,12 +1,12 @@
 {
     "default": {
-        "optimizer_type": "Lion",
+        "optimizer_type": "AdamW8bit",
         "optimizer_args": [
-            "weight_decay=0.005",
-            "betas=0.9,0.99"
+            "weight_decay=0.01",
+            "betas=0.9,0.999"
         ],
-        "unet_lr": 0.00008,
-        "text_encoder_lr": 0.000008,
+        "unet_lr": 0.0001,
+        "text_encoder_lr": 0.00001,
         "network_dim": 128,
         "network_alpha": 64,
         "lr_scheduler": "cosine",
