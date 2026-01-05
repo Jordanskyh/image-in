@@ -62,8 +62,8 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             # Sovereign V6.3: Fixed Step Tiering for Lion Optimizer
             # Logic: Use super high exposure to force 'hard_cap' as the fixed step count.
             if num_images < 15:
-                # Target: 250 Steps (Micro - Match Champion)
-                bs, exposure, hard_cap = 1, 1000, 250 
+                # Target: 225 Steps (Micro - Soften for L2)
+                bs, exposure, hard_cap = 1, 1000, 225 
             elif num_images < 40:
                 # Target: 400 Steps (Medium - Compensation for No T5)
                 bs, exposure, hard_cap = 2, 1000, 400
@@ -308,10 +308,10 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 lrs_settings["optimizer_type"] = "Lion"
                 lrs_settings["optimizer_args"] = ["weight_decay=0.005", "betas=(0.9,0.99)"]
                 
-            # Force Noise Offset Logic (V6.3)
+            # Force Noise Offset Logic (V6.7 - Low Contrast for L2 Score)
             if "noise_offset" not in lrs_settings:
-                # Logic: 0.035 for Micro/Medium, 0.03 for Large
-                lrs_settings["noise_offset"] = 0.035 if num_images < 40 else 0.03
+                # Logic: 0.02 for Micro (Soft), 0.035 for others
+                lrs_settings["noise_offset"] = 0.02 if num_images < 15 else 0.035
         if model_type == "flux":
             config.update({
                 "discrete_flow_shift": 3.1582,
