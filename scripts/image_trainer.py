@@ -310,8 +310,8 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 
             # Force Noise Offset Logic (V6.8 - Revert to Standard High Contrast)
             if "noise_offset" not in lrs_settings:
-                # Logic: 0.035 for Micro/Medium (Standard), 0.03 for Large
-                lrs_settings["noise_offset"] = 0.035 if num_images < 40 else 0.03
+                # Logic: 0.03 for Micro/Medium (V9.0 Universal), 0.025 for Large
+                lrs_settings["noise_offset"] = 0.03 if num_images < 40 else 0.025
         if model_type == "flux":
             config.update({
                 "discrete_flow_shift": 3.1582,
