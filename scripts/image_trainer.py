@@ -62,11 +62,11 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             # Sovereign V6.3: Fixed Step Tiering for Lion Optimizer
             # Logic: Use super high exposure to force 'hard_cap' as the fixed step count.
             if num_images < 15:
-                # Target: 360 Steps @ BS 4 (V7.1: 160 Epochs - Out-training the Champ)
-                bs, exposure, hard_cap = 4, 1000, 360 
+                # Target: 120 Steps @ BS 4 + Accum 2 (V9.0: Masterclass 106-Epoch)
+                bs, exposure, hard_cap = 4, 1000, 120 
             elif num_images < 40:
-                # Target: 500 Steps @ BS 4 (Medium)
-                bs, exposure, hard_cap = 4, 1000, 500
+                # Target: 300 Steps @ BS 4 (Medium)
+                bs, exposure, hard_cap = 4, 1000, 300
             else:
                 # Target: 600 Steps (Large)
                 bs, exposure, hard_cap = 4, 1000, 600
@@ -317,8 +317,9 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
-                "guidance_scale": 85.0,
-                "caption_dropout_rate": 0.05
+                "guidance_scale": 3.5,
+                "caption_dropout_rate": 0.0,
+                "noise_offset": 0.03
             })
 
         config.update({
