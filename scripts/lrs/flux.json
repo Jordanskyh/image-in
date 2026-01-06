@@ -3,8 +3,8 @@
         "optimizer_type": "prodigy",
         "optimizer_args": [
             "decouple=True",
-            "d_coef=1",
-            "weight_decay=0.05",
+            "d_coef=1.0",
+            "weight_decay=0.005",
             "use_bias_correction=True",
             "safeguard_warmup=True"
         ],
@@ -12,12 +12,12 @@
         "text_encoder_lr": 1.0,
         "lr_scheduler": "constant",
         "lr_warmup_steps": 0,
-        "network_dim": 128,
-        "network_alpha": 1,
+        "network_dim": 64,
+        "network_alpha": 64,
         "network_args": [
             "train_double_block_indices=all",
             "train_single_block_indices=all",
-            "train_t5xxl=True"
+            "train_t5xxl=False"
         ]
     },
     "data": {}

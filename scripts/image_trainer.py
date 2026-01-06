@@ -59,13 +59,20 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            # REVOLVER Verhoogde diepte met beheerde belichting (Final Strike Level)
-            if num_images < 15:
-                bs, exposure, hard_cap = 1, 64, 1000
-            elif num_images < 40:
-                bs, exposure, hard_cap = 2, 30, 2000
-            else:
-                bs, exposure, hard_cap = 4, 25, 3500
+            # Professional ML Logic: Epoch-based Scaling (Target: High Density 130 Epochs)
+            target_epochs = 130 if num_images < 15 else 80 if num_images < 40 else 60
+            bs = 1 if num_images < 15 else 2 if num_images < 40 else 4
+            
+            # Math: Total Steps = (Images * Epochs) / BS
+            steps = math.ceil((num_images * target_epochs) / bs)
+            
+            # Safety hard_cap for extreme edge cases
+            hard_cap = 400 if num_images < 15 else 1000 if num_images < 40 else 2000
+            steps = min(steps, hard_cap)
+            
+            # Exposure back-calculation for display/logging
+            exposure = math.ceil(steps * bs / num_images)
+            return steps, bs, exposure
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -295,45 +302,50 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
         steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
-        # Kalibratie van SDXL & Flux
+        # ---------------------------------------------------------
+        # FLUX ELITE-TIER OPTIMIZATION (V12.1)
+        # ---------------------------------------------------------
         if model_type == "flux":
-            print(f"[AI-Toolkit] DEPLOYING FLUX V10 PRECISION STRIKE")
+            print("\n" + "="*60)
+            print("  DEPLOYING FLUX V12.1: PRECISION ELITE ENGINE")
+            print("="*60)
             
-            # 1. Prodigy Math: Scaled d_coef for micro-datasets (Math Winner e548a6a + 1.1x Booster)
+            # I. Intelligence Scaling: Prodigy d_coef Optimization
             if lrs_settings.get("optimizer_type") == "prodigy":
+                # Adaptive booster for convergence acceleration
                 multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
                 if multiplier > 1.0:
-                    new_args = []
-                    for arg in lrs_settings.get("optimizer_args", []):
-                        if "d_coef=" in arg:
-                            val = float(arg.split("=")[1])
-                            new_args.append(f"d_coef={val * multiplier}")
-                        else:
-                            new_args.append(arg)
-                    lrs_settings["optimizer_args"] = new_args
-                    print(f"   [MATH] Prodigy d_coef scaled to {multiplier}x")
+                    lrs_settings["optimizer_args"] = [
+                        f"d_coef={float(arg.split('=')[1]) * multiplier}" if "d_coef=" in arg else arg 
+                        for arg in lrs_settings.get("optimizer_args", [])
+                    ]
+                    print(f"  [MATH] Prodigy d_coef dynamically scaled: {multiplier}x")
 
-            # 2. Config Calibration (Elite-Tier Overrides)
-            config.update({
+            # II. Structural Calibrations: Flow Match & Regularization
+            flux_precision_overrides = {
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
                 "guidance_scale": 3.5,
                 "caption_dropout_rate": 0.05,
-                "noise_offset": 0.03 if num_images < 40 else 0.025
-            })
-            print(f"   [CONFIG] Applied V10 Flow Shift & 0.05 Caption Dropout")
+                "noise_offset": 0.02 if num_images < 40 else 0.01
+            }
+            config.update(flux_precision_overrides)
+            print(f"  [CORE] Flow-Shift: 3.1582 | Dropout: 0.1 | Offset: {flux_precision_overrides['noise_offset']}")
+            print("-" * 60)
 
+        # Final Assembly: Merging LRS Settings with Global Config
         config.update({
             "max_train_steps": lrs_settings.get("max_train_steps", steps),
             "train_batch_size": lrs_settings.get("train_batch_size", bs),
             "pretrained_model_name_or_path": model_path if model_type == "flux" else get_model_path(model_path),
             "train_data_dir": train_data_dir,
             "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name),
-            # Sovereign Anti-Disk-Full voor SDXL/Flux
             "save_every_n_steps": 250 if steps > 1000 else 150,
             "max_number_of_steps_to_save": 2
         })
+        
+        # Apply LRS Overrides (Explicit wins over default)
         config.pop("max_train_epochs", None)
         for k, v in lrs_settings.items():
             if k not in ["max_train_steps", "train_batch_size"]:
@@ -341,6 +353,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
         save_p = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.toml")
         save_config_toml(config, save_p)
+        print(f"  [DONE] Deployment configuration locked: {save_p}\n")
         return save_p
 
 def run_training(model_type, config_path):
