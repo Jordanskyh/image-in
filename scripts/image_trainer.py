@@ -59,9 +59,9 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            # REVOLVER Verhoogde diepte met beheerde belichting (Restore from e548a6a)
+            # REVOLVER Verhoogde diepte met beheerde belichting (Final Strike Level)
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 32, 1000
+                bs, exposure, hard_cap = 1, 40, 1000
             elif num_images < 40:
                 bs, exposure, hard_cap = 2, 30, 2000
             else:
@@ -296,13 +296,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
         # Kalibratie van SDXL & Flux
-        # Sovereign V6.8 Universal Logic (Flux Dethrone Special)
         if model_type == "flux":
-            print(f"[AI-Toolkit] Applying Flux V9.1 Gold Standard calibrations")
+            print(f"[AI-Toolkit] DEPLOYING FLUX V10 PRECISION STRIKE")
             
-            # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset (Restore from e548a6a)
+            # 1. Prodigy Math: Scaled d_coef for micro-datasets (Math Winner e548a6a + 1.1x Booster)
             if lrs_settings.get("optimizer_type") == "prodigy":
-                multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.0
+                multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
                 if multiplier > 1.0:
                     new_args = []
                     for arg in lrs_settings.get("optimizer_args", []):
@@ -312,16 +311,18 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                         else:
                             new_args.append(arg)
                     lrs_settings["optimizer_args"] = new_args
-                    print(f"het speelveld van Jordansky-Prodigy Booster: d_coef scaled by {multiplier}x")
+                    print(f"   [MATH] Prodigy d_coef scaled to {multiplier}x")
 
+            # 2. Config Calibration (Elite-Tier Overrides)
             config.update({
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
                 "guidance_scale": 3.5,
-                "caption_dropout_rate": 0.0,
+                "caption_dropout_rate": 0.05,
                 "noise_offset": 0.03 if num_images < 40 else 0.025
             })
+            print(f"   [CONFIG] Applied V10 Flow Shift & 0.05 Caption Dropout")
 
         config.update({
             "max_train_steps": lrs_settings.get("max_train_steps", steps),
