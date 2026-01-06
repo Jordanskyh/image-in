@@ -12,7 +12,6 @@ import os
 import subprocess
 import sys
 import toml
-import math
 
 # Projectpadinstelling
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +46,7 @@ def patch_toolkit(obj, overrides):
         for k, v in obj.items():
             if k in overrides:
                 obj[k] = overrides[k]
-                print(f"het speelveld van Jordansky-[PATCH] {k}: {overrides[k]}")
+                print(f"   -> [PATCH] {k}: {overrides[k]}")
             patch_toolkit(v, overrides)
     elif isinstance(obj, list):
         for item in obj: patch_toolkit(item, overrides)
@@ -60,38 +59,31 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            # Professional ML Logic: V19 The Precision Strike (Target: 115 Epochs / 345 Steps)
-            target_epochs = 115 if num_images < 15 else 80 if num_images < 40 else 60
-            bs = 1 if num_images < 15 else 2 if num_images < 40 else 4
-            
-            # Math: Total Steps = (Images * Epochs) / BS
-            steps = math.ceil((num_images * target_epochs) / bs)
-            
-            # Safety hard_cap for extreme edge cases
-            hard_cap = 400 if num_images < 15 else 1000 if num_images < 40 else 2000
-            steps = min(steps, hard_cap)
-            
-            # Exposure back-calculation for display/logging
-            exposure = math.ceil(steps * bs / num_images)
-            return steps, bs, exposure
+            # REVOLVER Verhoogde diepte met beheerde belichting
+            if num_images < 15:
+                bs, exposure, hard_cap = 1, 55, 1100
+            elif num_images < 40:
+                bs, exposure, hard_cap = 2, 65, 1500 
+            else:
+                bs, exposure, hard_cap = 4, 60, 2500
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 135, 1800
+                bs, exposure, hard_cap = 1, 140, 2000
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 120, 2200
+                bs, exposure, hard_cap = 2, 100, 2800
             else:
-                bs, exposure, hard_cap = 4, 100, 3500
+                bs, exposure, hard_cap = 4, 85, 3800
 
         elif model_type == "z-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 150, 2000
+                bs, exposure, hard_cap = 1, 85, 1200
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 140, 2500
+                bs, exposure, hard_cap = 2, 80, 2000
             else:
-                bs, exposure, hard_cap = 4, 120, 3000
+                bs, exposure, hard_cap = 4, 75, 3000
 
         elif model_type == "sdxl" and not is_style:
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -111,8 +103,8 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             else:
                 bs, exposure, hard_cap = 4, 80, 2800
             
-        final_steps = max(50, min(int((num_images * exposure) / bs), hard_cap))
-        print(f"het speelveld van Jordansky-Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
+        final_steps = max(200, min(int((num_images * exposure) / bs), hard_cap))
+        print(f"In de lucht met Jordanksy Data: {num_images} | BS: {bs} | Exposure: {exposure}x | Steps: {final_steps} | Mode: {'Person' if not is_style else 'Style'}")
         return final_steps, bs, num_images
     except Exception: return 1000, 1, 0
 
@@ -123,7 +115,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
     if is_toolkit:
         with open(tmpl_p, "r") as f: config = yaml.safe_load(f)
-        # Sovereign Configuration
+        # V5 Sovereign Configuration
         steps, bs, n_imgs = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
         for proc in config.get('config', {}).get('process', []):
@@ -135,45 +127,22 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 # Dynamische LR-Booster (Precisie voor kleine datasets)
                 if n_imgs < 15:
                     orig_lr = proc['train'].get('lr', 1e-4)
-                    proc['train']['lr'] = orig_lr * 1.1 
-                    print(f"het speelveld van Jordansky-Booster: LR ditingkatkan naar {proc['train']['lr']}")
-                
-                # Optimalisatie van opslagintervallen
-                if model_type == "qwen-image":
-                    # Reusachtige LoRA Qwen
-                    proc['train']['save_every'] = 450 if steps > 900 else 300
-                    if 'save' in proc:
-                        proc['save']['max_step_saves_to_keep'] = 1 
-                elif model_type == "z-image":
-                    # Reusachtige LoRA 
-                    proc['train']['save_every'] = 500 if steps > 1200 else 250
-                    if 'save' in proc:
-                        proc['save']['max_step_saves_to_keep'] = 2
-                else:
-                    # Reusachtige LoRA SDXL/FLUX
-                    proc['train']['save_every'] = 500 if steps > 1000 else 250
-                    if 'save' in proc:
-                        proc['save']['max_step_saves_to_keep'] = 2
-                    
-                print(f"het speelveld van Jordansky-Math Sync: Steps={steps}, SaveEvery={proc['train']['save_every']}")
+                    proc['train']['lr'] = orig_lr * 1.1 # 10% Aggressiveness boost
+                    print(f"   -> [BOOSTER] Applied 1.1x LR multiplier for small dataset")
 
             # 2. Architecturale & Kwantisatie-optimalisatie
             if 'model' in proc:
                 proc['model']['name_or_path'] = model_path
+                if model_type == "qwen-image":
+                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
                 
-                # Lokale pad-instellingen (Cruciaal voor opslag)
                 if 'training_folder' in proc:
                     out = train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
                     os.makedirs(out, exist_ok=True)
                     proc['training_folder'] = out
-
-                if model_type == "qwen-image":
-                    # Qwen: Gebruik qfloat8 voor precisie (Champion gebruikt uint3)
-                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
                 
+                # Z-Image-adapter en ondersteuning voor convoluties
                 if model_type == "z-image":
-                    # Z-Image: Paksa qfloat8 en High-Rank LoRA
-                    proc['model'].update({'quantize': True, 'quantize_te': True, 'qtype': 'qfloat8', 'qtype_te': 'qfloat8'})
                     if 'network' in proc:
                         proc['network'].update({'linear': 128, 'linear_alpha': 128, 'conv': 32, 'conv_alpha': 32})
 
@@ -303,58 +272,46 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
         steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
-        # ---------------------------------------------------------
-        # FLUX ELITE-TIER OPTIMIZATION (V12.1)
-        # ---------------------------------------------------------
-        if model_type == "flux":
-            print("\n" + "="*60)
-            print("  DEPLOYING FLUX V12.1: PRECISION ELITE ENGINE")
-            print("="*60)
-            
-            # I. Intelligence Scaling: Prodigy d_coef Optimization
+        # Kalibratie van SDXL & Flux
+        if model_type in ["sdxl", "flux"]:
+            if model_type == "sdxl":
+                config["min_snr_gamma"] = 5 if not is_style else 7
+            # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
             if lrs_settings.get("optimizer_type") == "prodigy":
-                # Adaptive booster for convergence acceleration
+                # Adaptieve versterker (vermenigvuldiger)
                 multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
+                
                 if multiplier > 1.0:
-                    lrs_settings["optimizer_args"] = [
-                        f"d_coef={float(arg.split('=')[1]) * multiplier}" if "d_coef=" in arg else arg 
-                        for arg in lrs_settings.get("optimizer_args", [])
-                    ]
-                    print(f"  [MATH] Prodigy d_coef dynamically scaled: {multiplier}x")
-
-            # II. Structural Calibrations: Flow Match & Regularization
-            flux_precision_overrides = {
+                    new_args = []
+                    for arg in lrs_settings.get("optimizer_args", []):
+                        if "d_coef" in arg:
+                            val = float(arg.split("=")[1])
+                            new_args.append(f"d_coef={val * multiplier}")
+                        else: new_args.append(arg)
+                    lrs_settings["optimizer_args"] = new_args
+        
+        # Injectie van flux
+        if model_type == "flux":
+            config.update({
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
-                "guidance_scale": 3.5,
-                "caption_dropout_rate": 0.1,
-                "noise_offset": 0.015 if num_images < 40 else 0.01
-            }
-            config.update(flux_precision_overrides)
-            print(f"  [CORE] Flow-Shift: 3.1582 | Dropout: 0.1 | Offset: {flux_precision_overrides['noise_offset']}")
-            print("-" * 60)
+                "guidance_scale": 85.0
+            })
 
-        # Final Assembly: Merging LRS Settings with Global Config
         config.update({
             "max_train_steps": lrs_settings.get("max_train_steps", steps),
             "train_batch_size": lrs_settings.get("train_batch_size", bs),
             "pretrained_model_name_or_path": model_path if model_type == "flux" else get_model_path(model_path),
             "train_data_dir": train_data_dir,
-            "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name),
-            "save_every_n_steps": 250 if steps > 1000 else 150,
-            "max_number_of_steps_to_save": 2
+            "output_dir": train_paths.get_checkpoints_output_path(task_id, expected_repo_name)
         })
-        
-        # Apply LRS Overrides (Explicit wins over default)
         config.pop("max_train_epochs", None)
         for k, v in lrs_settings.items():
-            if k not in ["max_train_steps", "train_batch_size"]:
-                config[k] = v
+            if k not in ["max_train_steps", "train_batch_size"]: config[k] = v
 
         save_p = os.path.join(train_cst.IMAGE_CONTAINER_CONFIG_SAVE_PATH, f"{task_id}.toml")
         save_config_toml(config, save_p)
-        print(f"  [DONE] Deployment configuration locked: {save_p}\n")
         return save_p
 
 def run_training(model_type, config_path):
@@ -384,7 +341,7 @@ async def main():
     os.makedirs(train_cst.IMAGE_CONTAINER_IMAGES_PATH, exist_ok=True)
     model_path = train_paths.get_image_base_model_path(args.model, args.model_type)
 
-    print("het speelveld van JordanskyPreparing Dataset Env")
+    print("Preparing Dataset Environment...")
     prepare_dataset(
         training_images_zip_path=train_paths.get_image_training_zip_save_path(args.task_id),
         training_images_repeat=cst.DIFFUSION_SDXL_REPEATS if args.model_type == "sdxl" else cst.DIFFUSION_FLUX_REPEATS,
