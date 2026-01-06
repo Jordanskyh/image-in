@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import toml
+import math
 
 # Projectpadinstelling
 script_dir = os.path.dirname(os.path.abspath(__file__))
