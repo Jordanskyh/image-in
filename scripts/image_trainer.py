@@ -60,8 +60,8 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            # Professional ML Logic: Last Dance Supernova (Target: 150 Epochs / 450 Steps)
-            target_epochs = 150 if num_images < 15 else 80 if num_images < 40 else 60
+            # Professional ML Logic: V19 The Precision Strike (Target: 115 Epochs / 345 Steps)
+            target_epochs = 115 if num_images < 15 else 80 if num_images < 40 else 60
             bs = 1 if num_images < 15 else 2 if num_images < 40 else 4
             
             # Math: Total Steps = (Images * Epochs) / BS
@@ -328,8 +328,8 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
                 "guidance_scale": 3.5,
-                "caption_dropout_rate": 0.05,
-                "noise_offset": 0.01 if num_images < 40 else 0.01
+                "caption_dropout_rate": 0.1,
+                "noise_offset": 0.015 if num_images < 40 else 0.01
             }
             config.update(flux_precision_overrides)
             print(f"  [CORE] Flow-Shift: 3.1582 | Dropout: 0.1 | Offset: {flux_precision_overrides['noise_offset']}")

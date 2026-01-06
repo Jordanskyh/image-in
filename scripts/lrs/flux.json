@@ -4,7 +4,7 @@
         "optimizer_args": [
             "decouple=True",
             "d_coef=1.0",
-            "weight_decay=0.005",
+            "weight_decay=0.01",
             "use_bias_correction=True",
             "safeguard_warmup=True"
         ],
@@ -13,11 +13,11 @@
         "lr_scheduler": "constant",
         "lr_warmup_steps": 0,
         "network_dim": 64,
-        "network_alpha": 128,
+        "network_alpha": 64,
         "network_args": [
             "train_double_block_indices=all",
             "train_single_block_indices=all",
-            "train_t5xxl=True"
+            "train_t5xxl=False"
         ]
     },
     "data": {}
