@@ -59,17 +59,13 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
-            # Sovereign V6.3: Fixed Step Tiering for Lion Optimizer
-            # Logic: Use super high exposure to force 'hard_cap' as the fixed step count.
+            # REVOLVER Verhoogde diepte met beheerde belichting (Restore from e548a6a)
             if num_images < 15:
-                # Target: 120 Steps @ BS 4 + Accum 2 (V9.1: The 106-Epoch Precise Strike)
-                bs, exposure, hard_cap = 4, 1000, 120 
+                bs, exposure, hard_cap = 1, 32, 1000
             elif num_images < 40:
-                # Target: 300 Steps @ BS 4 (Medium)
-                bs, exposure, hard_cap = 4, 1000, 300
+                bs, exposure, hard_cap = 2, 30, 2000
             else:
-                # Target: 600 Steps (Large)
-                bs, exposure, hard_cap = 4, 1000, 600
+                bs, exposure, hard_cap = 4, 25, 3500
 
         elif model_type == "qwen-image":
             # REVOLVER Verhoogde diepte met beheerde belichting
@@ -300,26 +296,31 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
         steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
         
         # Kalibratie van SDXL & Flux
-        # Sovereign V6.3: Lion Injector Logic
-        # We removed Prodigy dynamic multipliers because Lion uses fixed scheduling.
+        # Sovereign V6.8 Universal Logic (Flux Dethrone Special)
         if model_type == "flux":
-            # Force Lion defaults if not present (Safety Net)
-            if "optimizer_type" not in lrs_settings:
-                lrs_settings["optimizer_type"] = "Lion"
-                lrs_settings["optimizer_args"] = ["weight_decay=0.005", "betas=(0.9,0.99)"]
-                
-            # Force Noise Offset Logic (V6.8 - Revert to Standard High Contrast)
-            if "noise_offset" not in lrs_settings:
-                # Logic: 0.03 for Micro/Medium (V9.0 Universal), 0.025 for Large
-                lrs_settings["noise_offset"] = 0.03 if num_images < 40 else 0.025
-        if model_type == "flux":
+            print(f"[AI-Toolkit] Applying Flux V9.1 Gold Standard calibrations")
+            
+            # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset (Restore from e548a6a)
+            if lrs_settings.get("optimizer_type") == "prodigy":
+                multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.0
+                if multiplier > 1.0:
+                    new_args = []
+                    for arg in lrs_settings.get("optimizer_args", []):
+                        if "d_coef=" in arg:
+                            val = float(arg.split("=")[1])
+                            new_args.append(f"d_coef={val * multiplier}")
+                        else:
+                            new_args.append(arg)
+                    lrs_settings["optimizer_args"] = new_args
+                    print(f"het speelveld van Jordansky-Prodigy Booster: d_coef scaled by {multiplier}x")
+
             config.update({
                 "discrete_flow_shift": 3.1582,
                 "model_prediction_type": "raw",
                 "timestep_sampling": "sigmoid",
                 "guidance_scale": 3.5,
                 "caption_dropout_rate": 0.0,
-                "noise_offset": 0.03
+                "noise_offset": 0.03 if num_images < 40 else 0.025
             })
 
         config.update({
