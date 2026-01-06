@@ -61,7 +61,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
         if model_type == "flux":
             # REVOLVER Verhoogde diepte met beheerde belichting
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 72, 1100
+                bs, exposure, hard_cap = 1, 55, 1100
             elif num_images < 40:
                 bs, exposure, hard_cap = 2, 65, 1500 
             else:
