@@ -90,7 +90,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             if num_images < 15:
                 bs, exposure, hard_cap = 1, 130, 1600 
             elif num_images < 30:
-                bs, exposure, hard_cap = 2, 120, 1600
+                bs, exposure, hard_cap = 2, 110, 1600
             elif num_images < 40:
                 bs, exposure, hard_cap = 4, 150, 2000
             else:
