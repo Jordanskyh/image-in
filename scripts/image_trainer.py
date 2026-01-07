@@ -86,11 +86,13 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
                 bs, exposure, hard_cap = 4, 75, 3000
 
         elif model_type == "sdxl" and not is_style:
-            # REVOLVER Verhoogde diepte met beheerde belichting
+            # REVOLVER V9 Universal: Time-Optimized Depth Control
             if num_images < 15:
                 bs, exposure, hard_cap = 1, 130, 1600 
+            elif num_images < 25:
+                bs, exposure, hard_cap = 2, 120, 1600
             elif num_images < 40:
-                bs, exposure, hard_cap = 2, 120, 2400
+                bs, exposure, hard_cap = 4, 150, 2000
             else:
                 bs, exposure, hard_cap = 4, 110, 3500
 
