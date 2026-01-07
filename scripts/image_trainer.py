@@ -90,7 +90,7 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
             if num_images < 15:
                 bs, exposure, hard_cap = 1, 130, 1600 
             elif num_images < 30:
-                bs, exposure, hard_cap = 2, 110, 1600
+                bs, exposure, hard_cap = 2, 120, 1600
             elif num_images < 40:
                 bs, exposure, hard_cap = 4, 150, 2000
             else:
@@ -280,9 +280,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 config["min_snr_gamma"] = 5 if not is_style else 7
             # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
             if lrs_settings.get("optimizer_type") == "prodigy":
-                # Adaptieve versterker (vermenigvuldiger) - Uitgeschakeld voor NID 9 (Illustrious/Pony) om NaN te voorkomen.
-                multiplier = 1.0
-                if nid != 9:
+                # REVOLVER V10: Precision Stability Booster
+                if nid == 9:
+                    # Subtle booster for High-Capacity models to beat champion scores without NaN
+                    multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.0
+                else:
+                    # Standard booster for stable architectures
                     multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
                 
                 if multiplier > 1.0:
