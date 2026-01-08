@@ -86,15 +86,13 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
                 bs, exposure, hard_cap = 4, 75, 3000
 
         elif model_type == "sdxl" and not is_style:
-            # REVOLVER V9 Universal Final: Zero-Timeout Science
+            # REVOLVER V12 Silver Bullet: Unified Champion Depth
             if num_images < 15:
-                bs, exposure, hard_cap = 1, 130, 1600 
+                bs, exposure, hard_cap = 1, 45, 1200 
             elif num_images < 30:
-                bs, exposure, hard_cap = 2, 120, 1600
-            elif num_images < 40:
-                bs, exposure, hard_cap = 4, 150, 2000
+                bs, exposure, hard_cap = 2, 45, 1200
             else:
-                bs, exposure, hard_cap = 4, 110, 3500
+                bs, exposure, hard_cap = 4, 45, 1500
 
         elif model_type == "sdxl" and is_style:
             # STYLE: Verhoogde diepte met beheerde belichting
@@ -280,12 +278,12 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 config["min_snr_gamma"] = 5 if not is_style else 7
             # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
             if lrs_settings.get("optimizer_type") == "prodigy":
-                # REVOLVER V10: Precision Stability Booster
+                # REVOLVER V12: The Subtle Winning Edge
                 if nid == 9:
-                    # Subtle booster for High-Capacity models to beat champion scores without NaN
-                    multiplier = 1.05 if num_images < 15 else 1.03 if num_images < 40 else 1.0
+                    # Subtle 1.02 multiplier to edge out champions without bloating weights
+                    multiplier = 1.02
                 else:
-                    # Standard booster for stable architectures
+                    # Adaptive boost for other architectures
                     multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
                 
                 if multiplier > 1.0:
