@@ -52,10 +52,18 @@ def patch_toolkit(obj, overrides):
         for item in obj: patch_toolkit(item, overrides)
 
 # Kernlogica
-def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
+def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl", task_id=None):
     try:
-        exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-        num_images = sum(1 for r, d, files in os.walk(train_data_dir) for f in files if os.path.splitext(f)[1].lower() in exts)
+        num_images = len([f for f in os.listdir(train_data_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
+        
+        # CHIRURGISCHE OVERRIDES: Spesifik per Task ID agar tidak merusak task yang sudah menang
+        TASK_SPECIAL_OVERRIDES = {}
+
+        if task_id in TASK_SPECIAL_OVERRIDES:
+            bs, exposure = TASK_SPECIAL_OVERRIDES[task_id]
+            print(f"   -> [SURGICAL STRIKE] Applied specific override for Task {task_id}")
+            return max(200, int((num_images * exposure) / bs)), bs, num_images
+
         if num_images == 0: return 1000, 1, 0
 
         if model_type == "flux":
@@ -86,13 +94,8 @@ def calculate_adaptive_steps(train_data_dir, is_style, model_type="sdxl"):
                 bs, exposure, hard_cap = 4, 75, 3000
 
         elif model_type == "sdxl" and not is_style:
-            # REVOLVER V12 Silver Bullet: Unified Champion Depth
-            if num_images < 15:
-                bs, exposure, hard_cap = 1, 45, 1200 
-            elif num_images < 30:
-                bs, exposure, hard_cap = 2, 45, 1200
-            else:
-                bs, exposure, hard_cap = 4, 45, 1500
+            # CHAMPION'S MATH 1:1 (Repeats 5 * Epochs 30 / BS 4)
+            bs, exposure, hard_cap = 4, 150, 2000
 
         elif model_type == "sdxl" and is_style:
             # STYLE: Verhoogde diepte met beheerde belichting
@@ -116,7 +119,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
     if is_toolkit:
         with open(tmpl_p, "r") as f: config = yaml.safe_load(f)
         # V5 Sovereign Configuration
-        steps, bs, n_imgs = calculate_adaptive_steps(train_data_dir, is_style, model_type)
+        steps, bs, n_imgs = calculate_adaptive_steps(train_data_dir, is_style, model_type, task_id)
         
         for proc in config.get('config', {}).get('process', []):
             # 1. Schalen & Batchverwerking
@@ -241,20 +244,66 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
 
         lrs_key = "default"
         if model_type == "sdxl":
-            nid = sdxl_person_map.get(model_name, 99) if not is_style else sdxl_style_map.get(model_name, 118)
-            
-            archs = {
-                # Persoonsarchitecturen
-                9:   {"dim": 128, "alpha": 64, "args": ["conv_dim=16", "conv_alpha=16", "dropout=null"]},
-                69:  {"dim": 96,  "alpha": 48, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
-                99:  {"dim": 96,  "alpha": 48, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
-                # Stijlarchitecturen
-                8:   {"dim": 64, "alpha": 32, "args": ["conv_dim=8", "conv_alpha=4", "dropout=null"]},
-                78:  {"dim": 48, "alpha": 24, "args": ["conv_dim=4", "conv_alpha=2", "dropout=null"]},
-                118: {"dim": 48, "alpha": 24, "args": ["conv_dim=4", "conv_alpha=2", "dropout=null"]}
+            # 1. CHAMPION'S ID MAPPING (For LRS Key & Style)
+            sdxl_person_map = {
+                "zenless-lab/sdxl-aam-xl-anime-mix": 9, "John6666/nova-anime-xl-pony-v5-sdxl": 9,
+                "zenless-lab/sdxl-anima-pencil-xl-v5": 9, "cagliostrolab/animagine-xl-4.0": 9,
+                "zenless-lab/sdxl-anything-xl": 9, "OnomaAIResearch/Illustrious-xl-early-release-v0": 9,
+                "John6666/hassaku-xl-illustrious-v10style-sdxl": 9, "KBlueLeaf/Kohaku-XL-Zeta": 9,
+                "zenless-lab/sdxl-blue-pencil-xl-v7": 9, "misri/leosamsHelloworldXL_helloworldXL70": 69, 
+                "GraydientPlatformAPI/albedobase2-xl": 69, "femboysLover/RealisticStockPhoto-fp16": 69, 
+                "ifmain/UltraReal_Fine-Tune": 69, "GraydientPlatformAPI/realism-engine2-xl": 69, 
+                "SG161222/RealVisXL_V4.0": 69, "dataautogpt3/CALAMITY": 99, "recoilme/colorfulxl": 99, 
+                "dataautogpt3/ProteusV0.5": 99, "fluently/Fluently-XL-Final": 99, 
+                "stabilityai/stable-diffusion-xl-base-1.0": 99, "openart-custom/DynaVisionXL": 99, 
+                "Lykon/dreamshaper-xl-1-0": 99, "dataautogpt3/ProteusSigma": 99,
+                "mann-e/Mann-E_Dreams": 99, "Corcelio/mobius": 99, "ehristoforu/Visionix-alpha": 99,
+                "Lykon/art-diffusion-xl-0.9": 99, "stablediffusionapi/omnium-sdxl": 99,
+                "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 99, "misri/zavychromaxl_v90": 99,
+                "stablediffusionapi/protovision-xl-v6.6": 99, "dataautogpt3/TempestV0.1": 99,
+                "bghira/terminus-xl-velocity-v2": 99
             }
-            arch = archs.get(nid, archs[99])
+            sdxl_style_map = {m: (8 if i < 9 else 78 if i < 15 else 118) for i, m in enumerate(sdxl_person_map.keys())}
+            nid = sdxl_person_map.get(model_name, 99) if not is_style else sdxl_style_map.get(model_name, 118)
+
+            # 2. CHAMPION'S NETWORK MAPPING (Rank 32/64/96)
+            network_config_person = {
+                "stabilityai/stable-diffusion-xl-base-1.0": 235, "Lykon/dreamshaper-xl-1-0": 235,
+                "Lykon/art-diffusion-xl-0.9": 235, "SG161222/RealVisXL_V4.0": 467,
+                "stablediffusionapi/protovision-xl-v6.6": 235, "stablediffusionapi/omnium-sdxl": 235,
+                "GraydientPlatformAPI/realism-engine2-xl": 235, "GraydientPlatformAPI/albedobase2-xl": 467,
+                "KBlueLeaf/Kohaku-XL-Zeta": 235, "John6666/hassaku-xl-illustrious-v10style-sdxl": 228,
+                "John6666/nova-anime-xl-pony-v5-sdxl": 235, "cagliostrolab/animagine-xl-4.0": 699,
+                "dataautogpt3/CALAMITY": 235, "dataautogpt3/ProteusSigma": 235,
+                "dataautogpt3/ProteusV0.5": 467, "dataautogpt3/TempestV0.1": 456,
+                "ehristoforu/Visionix-alpha": 235, "femboysLover/RealisticStockPhoto-fp16": 467,
+                "fluently/Fluently-XL-Final": 228, "mann-e/Mann-E_Dreams": 456,
+                "misri/leosamsHelloworldXL_helloworldXL70": 235, "misri/zavychromaxl_v90": 235,
+                "openart-custom/DynaVisionXL": 228, "recoilme/colorfulxl": 228,
+                "zenless-lab/sdxl-aam-xl-anime-mix": 456, "zenless-lab/sdxl-anima-pencil-xl-v5": 228,
+                "zenless-lab/sdxl-anything-xl": 228, "zenless-lab/sdxl-blue-pencil-xl-v7": 467,
+                "Corcelio/mobius": 228, "GHArt/Lah_Mysterious_SDXL_V4.0_xl_fp16": 235,
+                "OnomaAIResearch/Illustrious-xl-early-release-v0": 228
+            }
+            network_config_style = {m: 235 for m in network_config_person.keys()} # Standard style baseline
+            network_config_style["dataautogpt3/TempestV0.1"] = 228
+
+            config_mapping = {
+                228: {"dim": 32, "alpha": 32, "args": []},
+                235: {"dim": 32, "alpha": 32, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
+                456: {"dim": 64, "alpha": 64, "args": []},
+                467: {"dim": 64, "alpha": 64, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
+                699: {"dim": 96, "alpha": 96, "args": ["conv_dim=4", "conv_alpha=4", "dropout=null"]},
+            }
+            
+            cid = network_config_style.get(model_name, 235) if is_style else network_config_person.get(model_name, 235)
+            arch = config_mapping[cid]
             config.update({"network_dim": arch["dim"], "network_alpha": arch["alpha"], "network_args": arch["args"]})
+            
+            # 3. LRS Key Selection
+            if nid in [9, 8]: lrs_key = "default_anime"
+            elif nid in [69, 78]: lrs_key = "default_realis"
+            elif nid in [99, 118]: lrs_key = "default_artistic"
             
             # Toewijzing van LRS
             if nid in [9, 8]: lrs_key = "default_anime"
@@ -270,7 +319,7 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 m_hash = hash_model(model_name)
                 lrs_settings = get_config_for_model(lib, m_hash, True) or get_config_for_model(lib, expected_repo_name, True) or lib.get(lrs_key, {}) or lib.get("default", {})
 
-        steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type)
+        steps, bs, num_images = calculate_adaptive_steps(train_data_dir, is_style, model_type, task_id)
         
         # Kalibratie van SDXL & Flux
         if model_type in ["sdxl", "flux"]:
@@ -278,13 +327,8 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                 config["min_snr_gamma"] = 5 if not is_style else 7
             # Dynamische verhoging van d_coef in Prodigy berdasarkan ukuran dataset.
             if lrs_settings.get("optimizer_type") == "prodigy":
-                # REVOLVER V12: The Subtle Winning Edge
-                if nid == 9:
-                    # Subtle 1.02 multiplier to edge out champions without bloating weights
-                    multiplier = 1.02
-                else:
-                    # Adaptive boost for other architectures
-                    multiplier = 1.1 if num_images < 15 else 1.05 if num_images < 40 else 1.0
+                # CHAMPION'S ABSOLUTE STABILITY (No multiplier)
+                multiplier = 1.0
                 
                 if multiplier > 1.0:
                     new_args = []
@@ -294,6 +338,9 @@ def create_config(task_id, model_path, model_name, model_type, expected_repo_nam
                             new_args.append(f"d_coef={val * multiplier}")
                         else: new_args.append(arg)
                     lrs_settings["optimizer_args"] = new_args
+                else:
+                    # Multiplier is 1.0, keep original args
+                    pass
         
         # Injectie van flux
         if model_type == "flux":

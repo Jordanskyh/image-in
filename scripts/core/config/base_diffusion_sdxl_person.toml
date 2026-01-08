@@ -1,10 +1,9 @@
-# De infrastructuurblauwdruk van meneer Jordansky
-
-# HARDWARE & IO
+# CHAMPION'S RETIREMENT V1 BLUEPRINT
 mixed_precision = "bf16"
 save_precision = "bf16"
 gradient_checkpointing = true
 cache_latents = true
+cache_latents_to_disk = true
 xformers = true
 output_dir = "test_sdxl_sd3"
 output_name = "last"
@@ -30,6 +29,18 @@ loss_type = "l2"
 prior_loss_weight = 1.0
 min_snr_gamma = 5
 scale_weight_norms = 5
+
+# EPOCHS & BATCH (Champion's Math)
+max_train_epochs = 30
+train_batch_size = 4
+gradient_accumulation_steps = 1
+
+# OPTIMIZER (Champion's Absolute Stability)
+optimizer_type = "prodigy"
+optimizer_args = ["decouple=True", "d_coef=1", "weight_decay=0.01", "use_bias_correction=True", "safeguard_warmup=True"]
+unet_lr = 1
+text_encoder_lr = 1
+lr_scheduler = "constant"
 
 # MISC
 max_timestep = 1000
